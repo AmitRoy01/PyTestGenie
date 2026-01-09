@@ -1,8 +1,8 @@
 import os, sys, webbrowser, ast
 #sys.path.append('./assets')
-from components import SourceCode, Method, Classe, Data
-from detector import *
-from report_generator import *
+from .components import SourceCode, Method, Classe, Data
+from .detector import *
+from .report_generator import *
 
 
 class PythonParser:

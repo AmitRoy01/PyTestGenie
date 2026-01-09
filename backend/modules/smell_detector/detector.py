@@ -1,5 +1,5 @@
 import sys
-from components import SourceCode, Method, Classe, Data
+from .components import SourceCode, Method, Classe, Data
 
 ####################################################################
 
