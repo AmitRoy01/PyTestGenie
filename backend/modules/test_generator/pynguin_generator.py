@@ -1,5 +1,3 @@
-"""Pynguin-based automatic test generator."""
-
 import os
 import tempfile
 import subprocess
@@ -16,12 +14,13 @@ class PynguinGenerator:
         """Initialize Pynguin generator."""
         os.environ["PYNGUIN_DANGER_AWARE"] = "1"
     
-    def generate_tests(self, code: str, log_callback: Optional[Callable[[str], None]] = None) -> TestGenerationResult:
+    def generate_tests(self, code: str, log_callback: Optional[Callable[[str], None]] = None, algorithm: str = "DYNAMOSA") -> TestGenerationResult:
         """Generate unit tests for the given Python code using Pynguin.
         
         Args:
             code: Python source code to generate tests for
             log_callback: Optional callback function to receive log messages during generation
+            algorithm: Pynguin algorithm to use (DYNAMOSA, MIO, MOSA, RANDOM, etc.)
             
         Returns:
             TestGenerationResult containing generated test code or error
@@ -36,16 +35,19 @@ class PynguinGenerator:
             with open(code_file, "w", encoding="utf-8") as f:
                 f.write(code)
 
-            # Setup environment for subprocess
+            # Setup environment for subprocess with proper UTF-8 handling
             env = os.environ.copy()
             env["PYTHONIOENCODING"] = "utf-8"
+            env["PYTHONLEGACYWINDOWSSTDIO"] = "0"  # Force UTF-8 on Windows
+            env["PYTHONUTF8"] = "1"  # Enable UTF-8 mode (Python 3.7+)
 
-            # Run Pynguin
+            # Run Pynguin with selected algorithm
             cmd = [
                 "pynguin",
                 "--project-path", tmp_dir,
                 "--output-path", output_dir,
                 "--module-name", "user_code",
+                "--algorithm", algorithm,
                 "-v"
             ]
 
@@ -55,6 +57,8 @@ class PynguinGenerator:
                 stderr=subprocess.STDOUT,
                 env=env,
                 text=True,
+                encoding='utf-8',
+                errors='replace',
                 bufsize=1
             )
 
@@ -68,7 +72,7 @@ class PynguinGenerator:
             # Read generated test file
             test_file_path = os.path.join(output_dir, "test_user_code.py")
             if os.path.exists(test_file_path):
-                with open(test_file_path, "r", encoding="utf-8") as f:
+                with open(test_file_path, "r", encoding="utf-8", errors='replace') as f:
                     test_code = f.read()
                 return TestGenerationResult(test_code=test_code, method='pynguin')
             else:
@@ -85,19 +89,92 @@ class PynguinGenerator:
                 method='pynguin'
             )
     
-    def generate_tests_async(self, code: str, task_queue: queue.Queue) -> None:
+    def generate_tests_async(self, code: str, task_queue: queue.Queue, algorithm: str = "DYNAMOSA") -> None:
         """Generate tests asynchronously, putting results in the queue.
         
         Args:
             code: Python source code to generate tests for
             task_queue: Queue to send log messages and results to
+            algorithm: Pynguin algorithm to use (DYNAMOSA, MIO, MOSA, RANDOM, etc.)
         """
         def log_callback(line: str):
             task_queue.put({"type": "log", "line": line})
         
-        result = self.generate_tests(code, log_callback)
+        result = self.generate_tests(code, log_callback, algorithm)
         
         if result.error:
             task_queue.put({"type": "error", "message": result.error})
         else:
             task_queue.put({"type": "result", "test_code": result.test_code})
+    
+    def generate_tests_for_project(self, project_path: str, module_name: str, task_queue: queue.Queue, algorithm: str = "DYNAMOSA") -> None:
+        """Generate tests for a specific module in a project.
+        
+        Args:
+            project_path: Path to the project directory
+            module_name: Name of the module to test (without .py extension)
+            task_queue: Queue to send log messages and results to
+            algorithm: Pynguin algorithm to use
+        """
+        tmp_dir = tempfile.mkdtemp()
+        output_dir = os.path.join(tmp_dir, "tests")
+        os.makedirs(output_dir, exist_ok=True)
+        
+        try:
+            task_queue.put({"type": "log", "line": f"Generating tests for module: {module_name}"})
+            task_queue.put({"type": "log", "line": f"Project path: {project_path}"})
+            task_queue.put({"type": "log", "line": f"Algorithm: {algorithm}"})
+            
+            # Setup environment for subprocess with proper UTF-8 handling
+            env = os.environ.copy()
+            env["PYTHONIOENCODING"] = "utf-8"
+            env["PYTHONLEGACYWINDOWSSTDIO"] = "0"  # Force UTF-8 on Windows
+            env["PYTHONUTF8"] = "1"  # Enable UTF-8 mode (Python 3.7+)
+            
+            # Run Pynguin on the project
+            cmd = [
+                "pynguin",
+                "--project-path", project_path,
+                "--output-path", output_dir,
+                "--module-name", module_name,
+                "--algorithm", algorithm,
+                "-v"
+            ]
+            
+            task_queue.put({"type": "log", "line": f"Running command: {' '.join(cmd)}"})
+            
+            p = subprocess.Popen(
+                cmd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                env=env,
+                text=True,
+                encoding='utf-8',
+                errors='replace',
+                bufsize=1
+            )
+            
+            # Stream output
+            for line in p.stdout:
+                task_queue.put({"type": "log", "line": line.rstrip("\n")})
+            
+            p.wait()
+            
+            # Read generated test file
+            # Pynguin converts dots to underscores in test file names
+            # e.g., "package.module" -> "test_package_module.py"
+            test_filename = f"test_{module_name.replace('.', '_')}.py"
+            test_file_path = os.path.join(output_dir, test_filename)
+            
+            if os.path.exists(test_file_path):
+                try:
+                    with open(test_file_path, "r", encoding="utf-8", errors='replace') as f:
+                        test_code = f.read()
+                    task_queue.put({"type": "result", "test_code": test_code})
+                except Exception as read_err:
+                    task_queue.put({"type": "error", "message": f"Error reading generated test: {str(read_err)}"})
+            else:
+                task_queue.put({"type": "error", "message": f"Test file not generated by Pynguin. Expected: {test_filename}"})
+        
+        except Exception as e:
+            task_queue.put({"type": "error", "message": f"Error during Pynguin generation: {str(e)}"})
