@@ -21,6 +21,9 @@ class Config:
     # HuggingFace API
     HF_TOKEN = os.getenv('HF_TOKEN')
     
+    # Llama API (for local models)
+    LLAMA_API_URL = os.getenv('LLAMA_API_URL', 'http://localhost:11434/v1')
+    
     # CORS settings
     CORS_ORIGINS = os.getenv('CORS_ORIGINS', 'http://localhost:3000,http://localhost:5173').split(',')
     
