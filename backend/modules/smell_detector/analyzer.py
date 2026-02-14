@@ -4,6 +4,7 @@ import os
 from typing import List, Tuple
 from .python_parser import PythonParser
 from .report_generator import ReportGenerator
+from typing import Dict
 
 
 def is_hidden_directory(dirName: str) -> bool:
@@ -121,7 +122,7 @@ class TestSmellAnalyzer:
             except:
                 pass
     
-    def generate_report(self, all_logs: List, projects: List[str], ts_qtd: List[int], cont_total: int) -> str:
+    def generate_report(self, all_logs: List, projects: List[str], ts_qtd: List[int], cont_total: int, explanations: Dict = None, output_filename: str = None) -> str:
         """Generate HTML report from analysis results.
         
         Args:
@@ -133,19 +134,32 @@ class TestSmellAnalyzer:
         Returns:
             Path to generated report file
         """
-        report = ReportGenerator()
+        # Decide output name: AI report when explanations present
+        out_name = output_filename or ("log_ai.html" if explanations else "log.html")
+        report = ReportGenerator(output_filename=out_name)
+        # If explanations are provided, enable explanation column early
+        if explanations:
+            report.include_explanation = True
         report.add_header(cont_total, len(all_logs), projects, ts_qtd)
         
-        prev = None
         for index in range(len(all_logs)):
+            prev = None  # reset per file to avoid cross-file suppression
             report.add_table_header(projects[index], ts_qtd[index])
             for log in all_logs[index]:
                 if log.lines != prev:
-                    report.add_table_body(log.test_smell_type, log.method_name, log.lines)
+                    if explanations:
+                        key = (projects[index], getattr(log, 'method_name', ''), tuple(getattr(log, 'lines', [])))
+                        explanation = explanations.get(key)
+                        if explanation is not None:
+                            report.add_table_body_with_explanation(log.test_smell_type, log.method_name, log.lines, explanation)
+                        else:
+                            report.add_table_body(log.test_smell_type, log.method_name, log.lines)
+                    else:
+                        report.add_table_body(log.test_smell_type, log.method_name, log.lines)
                 prev = log.lines
             report.add_table_close(ts_qtd[index])
         
         report.add_footer()
         report.build()
         
-        return os.path.abspath('./report/log.html')
+        return os.path.abspath(f'./report/{out_name}')

@@ -10,6 +10,8 @@ import os
 from config.settings import config
 from routes.test_generation import test_gen_bp
 from routes.smell_detection import smell_detect_bp
+from routes.auth import auth_bp
+from routes.admin import admin_bp
 
 
 def create_app(config_name='development'):
@@ -25,8 +27,8 @@ def create_app(config_name='development'):
     CORS(app, resources={
         r"/api/*": {
             "origins": "*",
-            "methods": ["GET", "POST", "OPTIONS"],
-            "allow_headers": ["Content-Type"]
+            "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+            "allow_headers": ["Content-Type", "Authorization"]
         }
     })
     
@@ -40,6 +42,8 @@ def create_app(config_name='development'):
     # Register blueprints
     app.register_blueprint(test_gen_bp, url_prefix='/api/test-generator')
     app.register_blueprint(smell_detect_bp, url_prefix='/api/smell-detector')
+    app.register_blueprint(auth_bp, url_prefix='/api/auth')
+    app.register_blueprint(admin_bp, url_prefix='/api/admin')
     
     # Root endpoint
     @app.route('/')
@@ -49,21 +53,9 @@ def create_app(config_name='development'):
             "version": "1.0.0",
             "services": {
                 "test_generator": "/api/test-generator",
-                "smell_detector": "/api/smell-detector"
-            },
-            "endpoints": {
-                "test_generation": {
-                    "pynguin": "POST /api/test-generator/generate-tests/pynguin",
-                    "ai": "POST /api/test-generator/generate-tests/ai",
-                    "stream": "GET /api/test-generator/generate-tests/stream/<task_id>"
-                },
-                "smell_detection": {
-                    "analyze_file": "POST /api/smell-detector/analyze/file",
-                    "analyze_code": "POST /api/smell-detector/analyze/code",
-                    "analyze_directory": "POST /api/smell-detector/analyze/directory",
-                    "analyze_github": "POST /api/smell-detector/analyze/github",
-                    "get_report": "GET /api/smell-detector/report"
-                }
+                "smell_detector": "/api/smell-detector",
+                "authentication": "/api/auth",
+                "admin": "/api/admin"
             }
         })
     
@@ -77,4 +69,5 @@ def create_app(config_name='development'):
 
 if __name__ == '__main__':
     app = create_app('development')
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    # use_reloader=False prevents Windows socket errors
+    app.run(debug=True, host='0.0.0.0', port=5000, use_reloader=False)

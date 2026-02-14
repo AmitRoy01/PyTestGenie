@@ -9,6 +9,9 @@ function SmellDetector() {
   const [githubUrl, setGithubUrl] = useState("");
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState(null);
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [selectedFiles, setSelectedFiles] = useState([]);
+  const [generatingAiReport, setGeneratingAiReport] = useState(false);
 
   const handleAnalyzeCode = async () => {
     if (!code) return;
@@ -27,13 +30,16 @@ function SmellDetector() {
     }
   };
 
-  const handleAnalyzeFile = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
+  const handleFileSelect = (e) => {
+    setSelectedFile(e.target.files[0]);
+  };
+
+  const handleAnalyzeFile = async () => {
+    if (!selectedFile) return;
 
     setLoading(true);
     const formData = new FormData();
-    formData.append("file", file);
+    formData.append("file", selectedFile);
 
     try {
       const resp = await axios.post(`${API_BASE}/analyze/file`, formData);
@@ -45,14 +51,17 @@ function SmellDetector() {
     }
   };
 
-  const handleAnalyzeDirectory = async (e) => {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
+  const handleDirectorySelect = (e) => {
+    setSelectedFiles(Array.from(e.target.files));
+  };
+
+  const handleAnalyzeDirectory = async () => {
+    if (!selectedFiles || selectedFiles.length === 0) return;
 
     setLoading(true);
     const formData = new FormData();
-    for (let i = 0; i < files.length; i++) {
-      formData.append("files[]", files[i]);
+    for (let i = 0; i < selectedFiles.length; i++) {
+      formData.append("files[]", selectedFiles[i]);
     }
 
     try {
@@ -83,6 +92,43 @@ function SmellDetector() {
 
   const openReport = () => {
     window.open(`${API_BASE}/report`, "_blank");
+  };
+  const openAiReport = () => {
+    window.open(`${API_BASE}/report/ai`, "_blank");
+  };
+  const downloadAiReport = () => {
+    window.open(`${API_BASE}/report/ai/download`, "_blank");
+  };
+  const generateAiReport = async () => {
+    try {
+      setGeneratingAiReport(true);
+      if (mode === "code") {
+        await axios.post(`${API_BASE}/analyze/code?use_llm=true`, { code, filename: "test_code.py" });
+      } else if (mode === "file") {
+        const formData = new FormData();
+        if (!selectedFile) return;
+        formData.append("file", selectedFile);
+        await axios.post(`${API_BASE}/analyze/file?use_llm=true`, formData);
+      } else if (mode === "directory") {
+        const formData = new FormData();
+        if (!selectedFiles || selectedFiles.length === 0) return;
+        for (let i = 0; i < selectedFiles.length; i++) {
+          formData.append("files[]", selectedFiles[i]);
+        }
+        await axios.post(`${API_BASE}/analyze/directory?use_llm=true`, formData);
+      } else if (mode === "github") {
+        await axios.post(`${API_BASE}/analyze/github?use_llm=true`, { github_url: githubUrl });
+      }
+      setGeneratingAiReport(false);
+      openAiReport();
+    } catch (err) {
+      setGeneratingAiReport(false);
+      alert("Error generating AI report: " + err.message);
+    }
+  };
+
+  const downloadReport = () => {
+    window.open(`${API_BASE}/report/download`, "_blank");
   };
 
   return (
@@ -117,6 +163,8 @@ function SmellDetector() {
           </button>
         </div>
 
+        
+
         {mode === "code" && (
           <div>
             <textarea
@@ -141,11 +189,30 @@ function SmellDetector() {
               <input
                 type="file"
                 accept=".py"
-                onChange={handleAnalyzeFile}
+                onChange={handleFileSelect}
                 disabled={loading}
               />
               <span>📄 Choose Python File</span>
             </label>
+            {selectedFile && (
+              <div style={{ marginTop: "15px" }}>
+                <p style={{ 
+                  padding: "10px", 
+                  background: "#f5f5f5", 
+                  borderRadius: "4px",
+                  marginBottom: "10px"
+                }}>
+                  <strong>Selected File:</strong> {selectedFile.name}
+                </p>
+                <button
+                  className="btn btn-primary"
+                  onClick={handleAnalyzeFile}
+                  disabled={loading}
+                >
+                  {loading ? "⏳ Analyzing..." : "🔍 Detect Test Smells"}
+                </button>
+              </div>
+            )}
           </div>
         )}
 
@@ -157,11 +224,30 @@ function SmellDetector() {
                 accept=".py"
                 multiple
                 webkitdirectory="true"
-                onChange={handleAnalyzeDirectory}
+                onChange={handleDirectorySelect}
                 disabled={loading}
               />
               <span>📁 Choose Directory</span>
             </label>
+            {selectedFiles.length > 0 && (
+              <div style={{ marginTop: "15px" }}>
+                <p style={{ 
+                  padding: "10px", 
+                  background: "#f5f5f5", 
+                  borderRadius: "4px",
+                  marginBottom: "10px"
+                }}>
+                  <strong>Selected:</strong> {selectedFiles.length} Python file(s)
+                </p>
+                <button
+                  className="btn btn-primary"
+                  onClick={handleAnalyzeDirectory}
+                  disabled={loading}
+                >
+                  {loading ? "⏳ Analyzing..." : "🔍 Detect Test Smells"}
+                </button>
+              </div>
+            )}
           </div>
         )}
 
@@ -207,7 +293,22 @@ function SmellDetector() {
             )}
             {results.report_available && (
               <button className="btn btn-accent" onClick={openReport}>
-                📄 View Full Report
+                📄 View Report
+              </button>
+            )}
+            {results.report_available && (
+              <button className="btn btn-accent" style={{ marginLeft: "10px" }} onClick={generateAiReport} disabled={generatingAiReport}>
+                📄 View AI powered Report
+              </button>
+            )}
+            {results.report_available && (
+              <button className="btn" style={{ marginLeft: "10px" }} onClick={downloadReport}>
+                ⬇️ Download Report
+              </button>
+            )}
+            {results.report_available && (
+              <button className="btn" style={{ marginLeft: "10px" }} onClick={downloadAiReport}>
+                ⬇️ Download AI Report
               </button>
             )}
           </div>

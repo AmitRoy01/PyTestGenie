@@ -12,6 +12,8 @@ function TestGenerator() {
   const [canDetectSmells, setCanDetectSmells] = useState(false);
   const [algorithm, setAlgorithm] = useState("DYNAMOSA");
   const [aiModel, setAiModel] = useState("gpt-oss");
+  const [smellResults, setSmellResults] = useState(null);
+  const [generatingAiReport, setGeneratingAiReport] = useState(false);
   
   // File upload states
   const [inputMode, setInputMode] = useState("paste"); // "paste", "file", "project"
@@ -182,14 +184,43 @@ function TestGenerator() {
         "http://127.0.0.1:5000/api/smell-detector/analyze/code",
         { code: testCode, filename: "generated_test.py" }
       );
-
       if (resp.data.status === "success") {
-        alert(`Analysis complete! Found ${resp.data.total_smells} test smell(s).`);
-        // Open report in new tab
-        window.open("http://127.0.0.1:5000/api/smell-detector/report", "_blank");
+        setSmellResults(resp.data);
       }
     } catch (err) {
       alert("Error detecting smells: " + err.message);
+    }
+  };
+
+  const openReport = () => {
+    window.open("http://127.0.0.1:5000/api/smell-detector/report", "_blank");
+  };
+
+  const openAiReport = () => {
+    window.open("http://127.0.0.1:5000/api/smell-detector/report/ai", "_blank");
+  };
+
+  const downloadReportFile = () => {
+    window.open("http://127.0.0.1:5000/api/smell-detector/report/download", "_blank");
+  };
+
+  const downloadAiReportFile = () => {
+    window.open("http://127.0.0.1:5000/api/smell-detector/report/ai/download", "_blank");
+  };
+
+  const generateAiReport = async () => {
+    if (!testCode) return;
+    try {
+      setGeneratingAiReport(true);
+      await axios.post(
+        "http://127.0.0.1:5000/api/smell-detector/analyze/code?use_llm=true",
+        { code: testCode, filename: "generated_test.py" }
+      );
+      setGeneratingAiReport(false);
+      openAiReport();
+    } catch (err) {
+      setGeneratingAiReport(false);
+      alert("Error generating AI report: " + err.message);
     }
   };
 
@@ -213,7 +244,7 @@ function TestGenerator() {
               checked={!useAI}
               onChange={() => setUseAI(false)}
             />
-            <span>🤖 Pynguin (Automatic)</span>
+            <span>🤖 Rule-Based Approach</span>
           </label>
           <label className="radio-label">
             <input
@@ -221,7 +252,7 @@ function TestGenerator() {
               checked={useAI}
               onChange={() => setUseAI(true)}
             />
-            <span>🧠 AI (OpenAI/HuggingFace)</span>
+            <span>🧠 LLM Based Approach</span>
           </label>
         </div>
 
@@ -463,6 +494,41 @@ function TestGenerator() {
               </button>
             )}
           </div>
+          {smellResults && (
+            <div className="results-card" style={{ marginTop: "15px" }}>
+              <h3>📊 Analysis Results</h3>
+              <p><strong>Total Test Smells:</strong> {smellResults.total_smells}</p>
+              {smellResults.report_available && (
+                <div className="button-group" style={{ marginTop: "10px" }}>
+                  <button className="btn btn-accent" onClick={openReport}>
+                    📄 View Report
+                  </button>
+                  <button 
+                    className="btn btn-accent" 
+                    style={{ marginLeft: "10px" }} 
+                    onClick={generateAiReport}
+                    disabled={generatingAiReport}
+                  >
+                    📄 View AI powered Report
+                  </button>
+                      <button 
+                        className="btn" 
+                        style={{ marginLeft: "10px" }} 
+                        onClick={downloadReportFile}
+                      >
+                        ⬇️ Download Report
+                      </button>
+                      <button 
+                        className="btn" 
+                        style={{ marginLeft: "10px" }} 
+                        onClick={downloadAiReportFile}
+                      >
+                        ⬇️ Download AI Report
+                      </button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
     </div>
