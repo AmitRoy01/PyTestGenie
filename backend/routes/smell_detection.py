@@ -7,6 +7,7 @@ import shutil
 import git
 from werkzeug.utils import secure_filename
 from modules.smell_detector import TestSmellAnalyzer
+from services.gemini_service import generate_explanations_for_logs, generate_explanations_for_logs_from_code
 
 smell_detect_bp = Blueprint('smell_detector', __name__)
 analyzer = TestSmellAnalyzer()
@@ -32,8 +33,18 @@ def analyze_uploaded_file():
         # Analyze the file
         all_logs, projects, ts_qtd, cont_total = analyzer.analyze_files([filepath])
         
+        # Optional LLM explanations
+        use_llm = request.args.get('use_llm', 'false').lower() in ('1', 'true', 'yes')
+        explanations = None
+        if use_llm:
+            explanations = {}
+            # Only one project/file here
+            for idx, logs in enumerate(all_logs):
+                proj_path = projects[idx]
+                explanations.update(generate_explanations_for_logs(proj_path, logs))
+        
         # Generate report
-        report_path = analyzer.generate_report(all_logs, projects, ts_qtd, cont_total)
+        report_path = analyzer.generate_report(all_logs, projects, ts_qtd, cont_total, explanations)
         
         return jsonify({
             "status": "success",
@@ -65,7 +76,14 @@ def analyze_code_string():
         ts_qtd = [result['smell_count']]
         cont_total = result['smell_count']
         
-        report_path = analyzer.generate_report(all_logs, projects, ts_qtd, cont_total)
+        # Optional LLM explanations
+        use_llm = request.args.get('use_llm', 'false').lower() in ('1', 'true', 'yes')
+        explanations = None
+        if use_llm:
+            # Use code text directly to build context with correct line numbers
+            explanations = generate_explanations_for_logs_from_code(code, filename, all_logs[0])
+
+        report_path = analyzer.generate_report(all_logs, projects, ts_qtd, cont_total, explanations)
         
         # Return detailed results
         smells = []
@@ -117,8 +135,17 @@ def analyze_directory():
         # Analyze all files
         all_logs, projects, ts_qtd, cont_total = analyzer.analyze_files(uploaded_files)
         
+        # Optional LLM explanations
+        use_llm = request.args.get('use_llm', 'false').lower() in ('1', 'true', 'yes')
+        explanations = None
+        if use_llm:
+            explanations = {}
+            for idx, logs in enumerate(all_logs):
+                proj_path = projects[idx]
+                explanations.update(generate_explanations_for_logs(proj_path, logs))
+        
         # Generate report
-        report_path = analyzer.generate_report(all_logs, projects, ts_qtd, cont_total)
+        report_path = analyzer.generate_report(all_logs, projects, ts_qtd, cont_total, explanations)
         
         return jsonify({
             "status": "success",
@@ -156,8 +183,17 @@ def analyze_github():
         # Analyze test files
         all_logs, projects, ts_qtd, cont_total = analyzer.analyze_files(test_files)
         
+        # Optional LLM explanations
+        use_llm = request.args.get('use_llm', 'false').lower() in ('1', 'true', 'yes')
+        explanations = None
+        if use_llm:
+            explanations = {}
+            for idx, logs in enumerate(all_logs):
+                proj_path = projects[idx]
+                explanations.update(generate_explanations_for_logs(proj_path, logs))
+        
         # Generate report
-        report_path = analyzer.generate_report(all_logs, projects, ts_qtd, cont_total)
+        report_path = analyzer.generate_report(all_logs, projects, ts_qtd, cont_total, explanations)
         
         return jsonify({
             "status": "success",
@@ -179,3 +215,33 @@ def get_report():
         return send_file(report_path)
     else:
         return jsonify({"error": "No report available"}), 404
+
+
+@smell_detect_bp.route('/report/download')
+def download_report():
+    """Download the generated HTML report as an attachment."""
+    report_path = os.path.abspath('./report/log.html')
+    if os.path.exists(report_path):
+        return send_file(report_path, as_attachment=True, download_name='test_smells_report.html')
+    else:
+        return jsonify({"error": "No report available"}), 404
+
+
+@smell_detect_bp.route('/report/ai')
+def get_ai_report():
+    """Retrieve the AI-powered generated HTML report."""
+    report_path = os.path.abspath('./report/log_ai.html')
+    if os.path.exists(report_path):
+        return send_file(report_path)
+    else:
+        return jsonify({"error": "No AI report available"}), 404
+
+
+@smell_detect_bp.route('/report/ai/download')
+def download_ai_report():
+    """Download the AI-powered report as an attachment."""
+    report_path = os.path.abspath('./report/log_ai.html')
+    if os.path.exists(report_path):
+        return send_file(report_path, as_attachment=True, download_name='test_smells_report_ai.html')
+    else:
+        return jsonify({"error": "No AI report available"}), 404

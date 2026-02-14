@@ -4,11 +4,13 @@ from .components import SourceCode, Method, Classe, Data
 
 class ReportGenerator:
 
-	def __init__(self):
+	def __init__(self, output_filename: str = "log.html"):
 		os.makedirs("./report", exist_ok=True)
-		self.file = open("./report/log.html", 'w')
+		self.output_filename = output_filename
+		self.file = open(f"./report/{self.output_filename}", 'w')
 		self.content = ''
 		self.number_of_test_smells = 1
+		self.include_explanation = False
 
 
 	def add_header(self, total_ts, qtd_ts_in_projects, projects, ts_qtd): # step 1
@@ -268,13 +270,20 @@ class ReportGenerator:
 		self.content += '<div class="test-file-section">\n\t<div class="file-header">\n\t\t<div class="file-name"><i class="fas fa-file-code"></i>' + self.get_testfile_name(path) + '</div>\n\t\t<div class="file-path"><i class="fas fa-folder"></i> ' + self.get_path(path) + '</div>\n\t</div>'
 
 		if (qtd_ts > 0):
+            # If explanations are enabled, add a fifth column
 			self.content +='''\n\t<table>
 \t\t<thead>
 \t\t\t<tr>
 \t\t\t\t<th style="width: 5%">#</th>
 \t\t\t\t<th style="width: 25%">Test Smell Type</th>
-\t\t\t\t<th style="width: 50%">Method Name</th>
-\t\t\t\t<th style="width: 20%">Line Numbers</th>
+				<th style="width: 30%">Method Name</th>
+				<th style="width: 15%">Line Numbers</th>'''
+
+			if self.include_explanation:
+				self.content += '''
+				<th style="width: 30%">LLM Explanation</th>'''
+
+			self.content += '''
 \t\t\t</tr>
 \t\t</thead>\n'''
 
@@ -284,13 +293,34 @@ class ReportGenerator:
 
 	def add_table_body(self, ts, method, lines):  # step 4
 		self.content += '''\t\t<tbody>
-\t\t\t<tr>
-\t\t\t\t<td>''' + str(self.number_of_test_smells) + '''</td>
-\t\t\t\t<td>''' + ts + '''</td>
-\t\t\t\t<td>''' + method + '''</td>
-\t\t\t\t<td>''' + str(lines)[1:-1] + '''</td>
-\t\t\t</tr>
-\t\t</tbody>\n'''
+			<tr>
+				<td>''' + str(self.number_of_test_smells) + '''</td>
+				<td>''' + ts + '''</td>
+				<td>''' + method + '''</td>
+				<td>''' + str(lines)[1:-1] + '''</td>'''
+
+		if self.include_explanation:
+			# Placeholder cell; actual content injected by add_table_body_with_explanation
+			self.content += '''
+				<td></td>'''
+
+		self.content += '''
+			</tr>
+		</tbody>\n'''
+		self.number_of_test_smells += 1
+
+
+	def add_table_body_with_explanation(self, ts, method, lines, explanation):
+		self.include_explanation = True
+		self.content += '''\t\t<tbody>
+			<tr>
+				<td>''' + str(self.number_of_test_smells) + '''</td>
+				<td>''' + ts + '''</td>
+				<td>''' + method + '''</td>
+				<td>''' + str(lines)[1:-1] + '''</td>
+				<td>''' + (explanation or "") + '''</td>
+			</tr>
+		</tbody>\n'''
 		self.number_of_test_smells += 1
 
 
