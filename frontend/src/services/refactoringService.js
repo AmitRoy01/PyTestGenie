@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE = `${import.meta.env.VITE_API_BASE_URL}/refactoring`;
+const API_BASE = `${import.meta.env.VITE_API_BASE_URL || 'https://pytestgenie.onrender.com/api'}/refactoring`;
 
 const refactoringService = {
   /**

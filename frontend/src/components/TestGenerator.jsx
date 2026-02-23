@@ -2,8 +2,8 @@ import React, { useState } from "react";
 import axios from "axios";
 import RefactoringPanel from "./RefactoringPanel";
 
-const API_BASE = `${import.meta.env.VITE_API_BASE_URL}/test-generator`;
-const SMELL_API_BASE = `${import.meta.env.VITE_API_BASE_URL}/smell-detector`;
+const API_BASE = `${import.meta.env.VITE_API_BASE_URL || 'https://pytestgenie.onrender.com/api'}/test-generator`;
+const SMELL_API_BASE = `${import.meta.env.VITE_API_BASE_URL || 'https://pytestgenie.onrender.com/api'}/smell-detector`;
 
 function TestGenerator() {
   const [code, setCode] = useState("");

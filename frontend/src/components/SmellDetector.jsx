@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import axios from "axios";
 import RefactoringPanel from "./RefactoringPanel";
 
-const API_BASE = `${import.meta.env.VITE_API_BASE_URL}/smell-detector`;
+const API_BASE = `${import.meta.env.VITE_API_BASE_URL || 'https://pytestgenie.onrender.com/api'}/smell-detector`;
 
 function SmellDetector() {
   const [mode, setMode] = useState("code"); // code, file, directory, github

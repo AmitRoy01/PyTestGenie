@@ -1,6 +1,6 @@
 // Authentication service for handling login, registration, and token management
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL;
+const API_BASE = import.meta.env.VITE_API_BASE_URL || 'https://pytestgenie.onrender.com/api';
 
 class AuthService {
   // Get token from localStorage
