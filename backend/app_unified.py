@@ -3,7 +3,7 @@ Unified Flask Application - PyTestGenie
 Combines Test Code Generation and Test Smell Detection
 """
 
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request, make_response
 from flask_cors import CORS
 import os
 
@@ -24,18 +24,28 @@ def create_app(config_name='development'):
     # Load configuration
     app.config.from_object(config[config_name])
     
-    # Setup CORS - origins loaded from CORS_ORIGINS env variable
-    cors_origins = app.config['CORS_ORIGINS']
-    # If '*' is in the list (or is the only value), pass it as a string to allow all origins
-    if '*' in cors_origins:
-        cors_origins = '*'
-    CORS(app, resources={
-        r"/api/*": {
-            "origins": cors_origins,
-            "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-            "allow_headers": ["Content-Type", "Authorization"]
-        }
-    })
+    # Setup CORS - allow all origins unconditionally (JWT token auth, no cookies)
+    CORS(app, supports_credentials=False)
+
+    # Bulletproof CORS: explicit after_request handler covers every route
+    # including error responses and routes Flask-CORS might miss
+    @app.after_request
+    def add_cors_headers(response):
+        response.headers['Access-Control-Allow-Origin'] = '*'
+        response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS, PATCH'
+        response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, X-Requested-With'
+        return response
+
+    # Handle OPTIONS preflight for all routes explicitly
+    @app.before_request
+    def handle_options():
+        if request.method == 'OPTIONS':
+            resp = make_response()
+            resp.headers['Access-Control-Allow-Origin'] = '*'
+            resp.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS, PATCH'
+            resp.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, X-Requested-With'
+            resp.headers['Access-Control-Max-Age'] = '86400'
+            return resp, 200
     
     # Set environment variables
     os.environ["PYNGUIN_DANGER_AWARE"] = app.config['PYNGUIN_DANGER_AWARE']
