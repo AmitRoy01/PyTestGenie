@@ -16,12 +16,16 @@ function SmellDetector() {
   const [showRefactoring, setShowRefactoring] = useState(false);
   const [analyzedCode, setAnalyzedCode] = useState("");
   const [detectedSmells, setDetectedSmells] = useState([]);
+  const [fileRefactoringOpen, setFileRefactoringOpen] = useState({});
+  const [mountedFileRefactoring, setMountedFileRefactoring] = useState({});
+  const [mountedRefactoring, setMountedRefactoring] = useState(false);
 
   const handleAnalyzeCode = async () => {
     if (!code) return;
     
     setLoading(true);
     setShowRefactoring(false);
+    setMountedRefactoring(false);
     try {
       const resp = await axios.post(`${API_BASE}/analyze/code`, {
         code,
@@ -45,12 +49,16 @@ function SmellDetector() {
     if (!selectedFile) return;
 
     setLoading(true);
+    setShowRefactoring(false);
+    setMountedRefactoring(false);
     const formData = new FormData();
     formData.append("file", selectedFile);
 
     try {
       const resp = await axios.post(`${API_BASE}/analyze/file`, formData);
       setResults(resp.data);
+      setAnalyzedCode(resp.data.code || "");
+      setDetectedSmells(resp.data.smells || []);
       setLoading(false);
     } catch (err) {
       alert("Error: " + err.message);
@@ -66,6 +74,9 @@ function SmellDetector() {
     if (!selectedFiles || selectedFiles.length === 0) return;
 
     setLoading(true);
+    setShowRefactoring(false);
+    setFileRefactoringOpen({});
+    setMountedFileRefactoring({});
     const formData = new FormData();
     for (let i = 0; i < selectedFiles.length; i++) {
       formData.append("files[]", selectedFiles[i]);
@@ -74,6 +85,8 @@ function SmellDetector() {
     try {
       const resp = await axios.post(`${API_BASE}/analyze/directory`, formData);
       setResults(resp.data);
+      setAnalyzedCode(resp.data.code || "");
+      setDetectedSmells(resp.data.smells || []);
       setLoading(false);
     } catch (err) {
       alert("Error: " + err.message);
@@ -85,11 +98,16 @@ function SmellDetector() {
     if (!githubUrl) return;
 
     setLoading(true);
+    setShowRefactoring(false);
+    setFileRefactoringOpen({});
+    setMountedFileRefactoring({});
     try {
       const resp = await axios.post(`${API_BASE}/analyze/github`, {
         github_url: githubUrl
       });
       setResults(resp.data);
+      setAnalyzedCode(resp.data.code || "");
+      setDetectedSmells(resp.data.smells || []);
       setLoading(false);
     } catch (err) {
       alert("Error: " + err.message);
@@ -286,7 +304,9 @@ function SmellDetector() {
               <p><strong>Files Analyzed:</strong> {results.files_analyzed}</p>
             )}
             <p><strong>Total Test Smells:</strong> {results.total_smells}</p>
-            {results.smells && (
+
+            {/* Single-file smells (code / file mode) */}
+            {!results.files && results.smells && (
               <div className="smells-list">
                 <h4>Detected Smells:</h4>
                 {results.smells.map((smell, idx) => (
@@ -298,6 +318,7 @@ function SmellDetector() {
                 ))}
               </div>
             )}
+
             {results.report_available && (
               <button className="btn btn-accent" onClick={openReport}>
                 📄 View Report
@@ -318,11 +339,16 @@ function SmellDetector() {
                 ⬇️ Download AI Report
               </button>
             )}
-            {mode === "code" && results.smells && results.smells.length > 0 && (
-              <button 
-                className="btn btn-primary" 
-                style={{ marginLeft: "10px", marginTop: "10px" }} 
-                onClick={() => setShowRefactoring(!showRefactoring)}
+
+            {/* Single-file refactor button (code / file mode) */}
+            {!results.files && results.smells && results.smells.length > 0 && (
+              <button
+                className="btn btn-primary"
+                style={{ marginLeft: "10px", marginTop: "10px" }}
+                onClick={() => {
+                  setMountedRefactoring(true);
+                  setShowRefactoring(prev => !prev);
+                }}
               >
                 {showRefactoring ? '🔼 Hide Refactoring' : '🔧 Refactor Code'}
               </button>
@@ -331,11 +357,58 @@ function SmellDetector() {
         </div>
       )}
 
-      {showRefactoring && mode === "code" && (
-        <div className="section">
-          <RefactoringPanel code={analyzedCode} detectedSmells={detectedSmells} />
+      {/* Single-file RefactoringPanel - stays mounted once opened, CSS hide/show */}
+      {mountedRefactoring && analyzedCode && (
+        <div style={{ display: showRefactoring ? 'block' : 'none' }}>
+          <div className="section">
+            <RefactoringPanel code={analyzedCode} detectedSmells={detectedSmells} />
+          </div>
         </div>
       )}
+
+      {/* Multi-file per-file cards (directory / github mode) */}
+      {results && results.files && results.files.map((fileResult, idx) => (
+        <div key={idx} className="section" style={{ marginTop: "15px" }}>
+          <div className="results-card">
+            <h4 style={{ marginBottom: "10px", color: "#333", display: "flex", alignItems: "center", gap: "8px" }}>
+              📄 {fileResult.filename}
+              <span style={{ fontSize: "0.82em", color: "#666", fontWeight: "normal" }}>
+                ({fileResult.smell_count} smell{fileResult.smell_count !== 1 ? 's' : ''})
+              </span>
+            </h4>
+            {fileResult.smells && fileResult.smells.length > 0 ? (
+              <>
+                <div className="smells-list">
+                  {fileResult.smells.map((smell, sidx) => (
+                    <div key={sidx} className="smell-item">
+                      <span className="smell-type">{smell.type}</span>
+                      <span className="smell-method">{smell.method}</span>
+                      <span className="smell-lines">Line {smell.lines}</span>
+                    </div>
+                  ))}
+                </div>
+                <button
+                  className="btn btn-primary"
+                  style={{ marginTop: "10px" }}
+                  onClick={() => {
+                    setMountedFileRefactoring(prev => ({ ...prev, [idx]: true }));
+                    setFileRefactoringOpen(prev => ({ ...prev, [idx]: !prev[idx] }));
+                  }}
+                >
+                  {fileRefactoringOpen[idx] ? '🔼 Hide Refactoring' : '🔧 Refactor Code'}
+                </button>
+              </>
+            ) : (
+              <p style={{ color: "#28a745", marginBottom: 0 }}>✅ No smells detected in this file.</p>
+            )}
+          </div>
+          {mountedFileRefactoring[idx] && (
+            <div style={{ display: fileRefactoringOpen[idx] ? 'block' : 'none', marginTop: "10px" }} className="section">
+              <RefactoringPanel code={fileResult.code} detectedSmells={fileResult.smells} />
+            </div>
+          )}
+        </div>
+      ))}
     </div>
   );
 }
