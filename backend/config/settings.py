@@ -32,7 +32,7 @@ class Config:
     GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
     GEMINI_MODEL = os.getenv('GEMINI_MODEL', 'gemini-1.5-flash')
     
-    # CORS settings
+    # CORS settings - comma-separated list of allowed origins, or '*' to allow all
     CORS_ORIGINS = os.getenv('CORS_ORIGINS', 'http://localhost:3000,http://localhost:5173').split(',')
     
     # Pynguin settings
@@ -55,6 +55,8 @@ class DevelopmentConfig(Config):
 class ProductionConfig(Config):
     """Production configuration."""
     DEBUG = False
+    # Allow all origins in production by default (JWT auth is used, not cookies)
+    CORS_ORIGINS = os.getenv('CORS_ORIGINS', '*').split(',')
 
 
 # Config dictionary

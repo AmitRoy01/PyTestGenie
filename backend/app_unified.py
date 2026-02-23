@@ -25,9 +25,13 @@ def create_app(config_name='development'):
     app.config.from_object(config[config_name])
     
     # Setup CORS - origins loaded from CORS_ORIGINS env variable
+    cors_origins = app.config['CORS_ORIGINS']
+    # If '*' is in the list (or is the only value), pass it as a string to allow all origins
+    if '*' in cors_origins:
+        cors_origins = '*'
     CORS(app, resources={
         r"/api/*": {
-            "origins": app.config['CORS_ORIGINS'],
+            "origins": cors_origins,
             "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
             "allow_headers": ["Content-Type", "Authorization"]
         }
