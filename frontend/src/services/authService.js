@@ -1,6 +1,6 @@
 // Authentication service for handling login, registration, and token management
 
-const API_BASE = 'http://127.0.0.1:5000/api';
+const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5000/api';
 
 class AuthService {
   // Get token from localStorage

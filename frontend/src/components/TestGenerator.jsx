@@ -1,7 +1,8 @@
 import React, { useState } from "react";
 import axios from "axios";
 
-const API_BASE = "http://127.0.0.1:5000/api/test-generator";
+const BACKEND_URL = import.meta.env.VITE_API_BASE || 'http://localhost:5000/api';
+const API_BASE = `${BACKEND_URL}/test-generator`;
 
 function TestGenerator() {
   const [code, setCode] = useState("");
@@ -181,7 +182,7 @@ function TestGenerator() {
 
     try {
       const resp = await axios.post(
-        "http://127.0.0.1:5000/api/smell-detector/analyze/code",
+        `${BACKEND_URL}/smell-detector/analyze/code`,
         { code: testCode, filename: "generated_test.py" }
       );
       if (resp.data.status === "success") {
@@ -193,19 +194,19 @@ function TestGenerator() {
   };
 
   const openReport = () => {
-    window.open("http://127.0.0.1:5000/api/smell-detector/report", "_blank");
+    window.open(`${BACKEND_URL}/smell-detector/report`, "_blank");
   };
 
   const openAiReport = () => {
-    window.open("http://127.0.0.1:5000/api/smell-detector/report/ai", "_blank");
+    window.open(`${BACKEND_URL}/smell-detector/report/ai`, "_blank");
   };
 
   const downloadReportFile = () => {
-    window.open("http://127.0.0.1:5000/api/smell-detector/report/download", "_blank");
+    window.open(`${BACKEND_URL}/smell-detector/report/download`, "_blank");
   };
 
   const downloadAiReportFile = () => {
-    window.open("http://127.0.0.1:5000/api/smell-detector/report/ai/download", "_blank");
+    window.open(`${BACKEND_URL}/smell-detector/report/ai/download`, "_blank");
   };
 
   const generateAiReport = async () => {
@@ -213,7 +214,7 @@ function TestGenerator() {
     try {
       setGeneratingAiReport(true);
       await axios.post(
-        "http://127.0.0.1:5000/api/smell-detector/analyze/code?use_llm=true",
+        `${BACKEND_URL}/smell-detector/analyze/code?use_llm=true`,
         { code: testCode, filename: "generated_test.py" }
       );
       setGeneratingAiReport(false);
