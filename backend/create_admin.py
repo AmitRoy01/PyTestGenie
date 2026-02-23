@@ -7,6 +7,10 @@ import os
 from pymongo import MongoClient
 import bcrypt
 from datetime import datetime
+from dotenv import load_dotenv
+
+# Load .env file
+load_dotenv()
 
 # Add backend to path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -32,14 +36,14 @@ def create_admin_user():
         db = client[database_name]
         users_collection = db['users']
         
-        print(f"✓ Connected to MongoDB: {mongodb_url}")
-        print(f"✓ Database: {database_name}")
+        print(f"[OK] Connected to MongoDB: {mongodb_url}")
+        print(f"[OK] Database: {database_name}")
         
         # Check if admin already exists
         existing_admin = users_collection.find_one({'username': ADMIN_USERNAME})
         
         if existing_admin:
-            print(f"\n⚠️  Admin user '{ADMIN_USERNAME}' already exists!")
+            print(f"\n[WARN] Admin user '{ADMIN_USERNAME}' already exists!")
             print(f"   Email: {existing_admin.get('email')}")
             print(f"   Created: {existing_admin.get('created_at')}")
             
@@ -57,7 +61,7 @@ def create_admin_user():
                         'updated_at': datetime.utcnow()
                     }}
                 )
-                print(f"\n✅ Admin password reset successfully!")
+                print(f"\n[SUCCESS] Admin password reset successfully!")
             else:
                 print("\n   No changes made.")
             return
@@ -80,7 +84,7 @@ def create_admin_user():
         
         result = users_collection.insert_one(admin_user)
         
-        print(f"\n✅ Admin user created successfully!")
+        print(f"\n[SUCCESS] Admin user created successfully!")
         print(f"\n{'='*60}")
         print(f"Admin Credentials:")
         print(f"{'='*60}")
@@ -88,12 +92,12 @@ def create_admin_user():
         print(f"Email:    {ADMIN_EMAIL}")
         print(f"Password: {ADMIN_PASSWORD}")
         print(f"{'='*60}")
-        print(f"\n⚠️  IMPORTANT: Change this password after first login!")
-        print(f"\n✓ You can now login at: http://localhost:3000")
-        print(f"✓ Backend API running at: http://localhost:5000")
+        print(f"\n[IMPORTANT] Change this password after first login!")
+        print(f"\n[OK] You can now login at: http://localhost:3000")
+        print(f"[OK] Backend API running at: http://localhost:5000")
         
     except Exception as e:
-        print(f"\n❌ Error: {e}")
+        print(f"\n[ERROR] Error: {e}")
         print("\nMake sure:")
         print("  1. MongoDB is running (net start MongoDB)")
         print("  2. Dependencies are installed (pip install -r requirements.txt)")
@@ -103,13 +107,13 @@ def create_admin_user():
 
 
 if __name__ == "__main__":
-    print("\n🔐 PyTestGenie - Admin User Setup")
+    print("\n[SETUP] PyTestGenie - Admin User Setup")
     print("="*60)
     
     success = create_admin_user()
     
     if success:
-        print("\n🎉 Setup complete! You can now start the application.")
+        print("\n[SUCCESS] Setup complete! You can now start the application.")
         print("\nNext steps:")
         print("  1. Start backend:  cd backend && python app_unified.py")
         print("  2. Start frontend: cd frontend && npm run dev")

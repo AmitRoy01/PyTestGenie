@@ -13,7 +13,7 @@ refactoring_bp = Blueprint('refactoring', __name__)
 
 # Configuration
 HUGGINGFACE_API_KEY = os.getenv("HF_TOKEN", "")
-OLLAMA_BASE_URL = "http://localhost:11434"
+OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
 
 # Available models
 AVAILABLE_MODELS = {
