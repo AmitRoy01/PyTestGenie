@@ -49,7 +49,7 @@ const refactoringService = {
    * @param {string} params.agent_mode - "single" or "multi"
    * @param {number} params.temperature - LLM temperature (default 0.6)
    */
-  refactorCode: async ({ code, smell_name, model_type = 'ollama', model_name = 'llama3.2', agent_mode = 'single', temperature = 0.6 }) => {
+  refactorCode: async ({ code, smell_name, model_type = 'ollama', model_name = 'llama3.2', agent_mode = 'single', temperature = 0.6, signal = undefined }) => {
     try {
       const response = await axios.post(`${API_BASE}/refactor`, {
         code,
@@ -58,7 +58,7 @@ const refactoringService = {
         model_name,
         agent_mode,
         temperature
-      });
+      }, { signal });
       return response.data;
     } catch (error) {
       throw error.response?.data || error;

@@ -17,6 +17,7 @@ function TestGenerator() {
   const [smellResults, setSmellResults] = useState(null);
   const [generatingAiReport, setGeneratingAiReport] = useState(false);
   const [showRefactoring, setShowRefactoring] = useState(false);
+  const [mountedRefactoring, setMountedRefactoring] = useState(false);
   const [detectedSmells, setDetectedSmells] = useState([]);
   
   // File upload states
@@ -100,6 +101,10 @@ function TestGenerator() {
     setTestCode("");
     setLogs([]);
     setCanDetectSmells(false);
+    setShowRefactoring(false);
+    setMountedRefactoring(false);
+    setSmellResults(null);
+    setDetectedSmells([]);
 
     try {
       if (useAI) {
@@ -503,6 +508,18 @@ function TestGenerator() {
             <div className="results-card" style={{ marginTop: "15px" }}>
               <h3>📊 Analysis Results</h3>
               <p><strong>Total Test Smells:</strong> {smellResults.total_smells}</p>
+              {smellResults.smells && smellResults.smells.length > 0 && (
+                <div className="smells-list" style={{ marginBottom: "10px" }}>
+                  <h4>Detected Smells:</h4>
+                  {smellResults.smells.map((smell, idx) => (
+                    <div key={idx} className="smell-item">
+                      <span className="smell-type">{smell.type}</span>
+                      <span className="smell-method">{smell.method}</span>
+                      <span className="smell-lines">Line {smell.lines}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
               {smellResults.report_available && (
                 <div className="button-group" style={{ marginTop: "10px" }}>
                   <button className="btn btn-accent" onClick={openReport}>
@@ -534,7 +551,10 @@ function TestGenerator() {
                         <button 
                           className="btn btn-primary" 
                           style={{ marginLeft: "10px" }} 
-                          onClick={() => setShowRefactoring(!showRefactoring)}
+                          onClick={() => {
+                            setMountedRefactoring(true);
+                            setShowRefactoring(prev => !prev);
+                          }}
                         >
                           {showRefactoring ? '🔼 Hide Refactoring' : '🔧 Refactor Code'}
                         </button>
@@ -546,9 +566,11 @@ function TestGenerator() {
         </div>
       )}
 
-      {showRefactoring && testCode && (
-        <div className="section">
-          <RefactoringPanel code={testCode} detectedSmells={detectedSmells} />
+      {mountedRefactoring && testCode && (
+        <div style={{ display: showRefactoring ? 'block' : 'none' }}>
+          <div className="section">
+            <RefactoringPanel code={testCode} detectedSmells={detectedSmells} />
+          </div>
         </div>
       )}
     </div>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import refactoringService from "../services/refactoringService";
 
 function RefactoringPanel({ code, detectedSmells }) {
@@ -6,12 +6,12 @@ function RefactoringPanel({ code, detectedSmells }) {
   const [selectedSmell, setSelectedSmell] = useState("All");
   const [modelType, setModelType] = useState("ollama");
   const [modelName, setModelName] = useState("llama3.2");
-  const [temperature, setTemperature] = useState(0.6);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
   const [availableModels, setAvailableModels] = useState({ ollama: [], huggingface: [] });
   const [healthStatus, setHealthStatus] = useState(null);
+  const abortControllerRef = useRef(null);
 
   useEffect(() => {
     // Fetch available models
@@ -47,6 +47,10 @@ function RefactoringPanel({ code, detectedSmells }) {
       return;
     }
 
+    // Create a new AbortController for this request
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     setLoading(true);
     setError(null);
     setResult(null);
@@ -58,15 +62,29 @@ function RefactoringPanel({ code, detectedSmells }) {
         model_type: modelType,
         model_name: modelName,
         agent_mode: agentMode,
-        temperature: parseFloat(temperature)
+        temperature: 0.6,
+        signal: controller.signal
       });
 
       setResult(response);
     } catch (err) {
+      // Ignore abort errors — user cancelled intentionally
+      if (err?.code === 'ERR_CANCELED' || err?.name === 'AbortError' || err?.name === 'CanceledError') {
+        return;
+      }
       setError(err.error || err.message || 'An error occurred during refactoring');
     } finally {
       setLoading(false);
+      abortControllerRef.current = null;
     }
+  };
+
+  const handleCancel = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+    setLoading(false);
   };
 
   const copyToClipboard = (text) => {
@@ -175,19 +193,6 @@ function RefactoringPanel({ code, detectedSmells }) {
                 }
               </select>
             </div>
-
-            <div className="config-item">
-              <label>Temperature: {temperature}</label>
-              <input 
-                type="range" 
-                min="0" 
-                max="1" 
-                step="0.1"
-                value={temperature} 
-                onChange={(e) => setTemperature(e.target.value)}
-                disabled={loading}
-              />
-            </div>
           </div>
 
           <button 
@@ -197,6 +202,15 @@ function RefactoringPanel({ code, detectedSmells }) {
           >
             {loading ? '🔄 Refactoring...' : `✨ Refactor with ${agentMode === 'single' ? 'Single' : 'Multi'} Agent`}
           </button>
+          {loading && (
+            <button
+              onClick={handleCancel}
+              className="btn btn-danger"
+              style={{ marginLeft: '10px' }}
+            >
+              ✖ Cancel
+            </button>
+          )}
         </div>
       </div>
 

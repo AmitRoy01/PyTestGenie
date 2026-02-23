@@ -30,6 +30,10 @@ def analyze_uploaded_file():
     file.save(filepath)
     
     try:
+        # Read file content for pipeline (before analysis)
+        with open(filepath, 'r', encoding='utf-8', errors='replace') as f:
+            file_content = f.read()
+
         # Analyze the file
         all_logs, projects, ts_qtd, cont_total = analyzer.analyze_files([filepath])
         
@@ -45,10 +49,25 @@ def analyze_uploaded_file():
         
         # Generate report
         report_path = analyzer.generate_report(all_logs, projects, ts_qtd, cont_total, explanations)
+
+        # Build smells list
+        smells = []
+        if all_logs:
+            prev = None
+            for log in all_logs[0]:
+                if log.lines != prev:
+                    smells.append({
+                        "type": log.test_smell_type,
+                        "method": log.method_name,
+                        "lines": log.lines
+                    })
+                    prev = log.lines
         
         return jsonify({
             "status": "success",
             "total_smells": cont_total,
+            "smells": smells,
+            "code": file_content,
             "report_available": True
         })
     except Exception as e:
@@ -146,11 +165,41 @@ def analyze_directory():
         
         # Generate report
         report_path = analyzer.generate_report(all_logs, projects, ts_qtd, cont_total, explanations)
-        
+
+        # Build per-file results
+        files_result = []
+        for i, fp in enumerate(uploaded_files):
+            fname = os.path.basename(fp)
+            try:
+                with open(fp, 'r', encoding='utf-8', errors='replace') as f:
+                    file_code = f.read()
+            except Exception:
+                file_code = ""
+
+            file_logs = all_logs[i] if i < len(all_logs) else []
+            file_smells = []
+            prev = None
+            for log in file_logs:
+                if log.lines != prev:
+                    file_smells.append({
+                        "type": log.test_smell_type,
+                        "method": log.method_name,
+                        "lines": log.lines
+                    })
+                    prev = log.lines
+
+            files_result.append({
+                "filename": fname,
+                "code": file_code,
+                "smells": file_smells,
+                "smell_count": ts_qtd[i] if i < len(ts_qtd) else len(file_smells)
+            })
+
         return jsonify({
             "status": "success",
             "files_analyzed": len(uploaded_files),
             "total_smells": cont_total,
+            "files": files_result,
             "report_available": True
         })
     except Exception as e:
@@ -194,11 +243,41 @@ def analyze_github():
         
         # Generate report
         report_path = analyzer.generate_report(all_logs, projects, ts_qtd, cont_total, explanations)
-        
+
+        # Build per-file results
+        files_result = []
+        for i, fp in enumerate(test_files):
+            fname = os.path.basename(fp)
+            try:
+                with open(fp, 'r', encoding='utf-8', errors='replace') as f:
+                    file_code = f.read()
+            except Exception:
+                file_code = ""
+
+            file_logs = all_logs[i] if i < len(all_logs) else []
+            file_smells = []
+            prev = None
+            for log in file_logs:
+                if log.lines != prev:
+                    file_smells.append({
+                        "type": log.test_smell_type,
+                        "method": log.method_name,
+                        "lines": log.lines
+                    })
+                    prev = log.lines
+
+            files_result.append({
+                "filename": fname,
+                "code": file_code,
+                "smells": file_smells,
+                "smell_count": ts_qtd[i] if i < len(ts_qtd) else len(file_smells)
+            })
+
         return jsonify({
             "status": "success",
             "files_analyzed": len(test_files),
             "total_smells": cont_total,
+            "files": files_result,
             "report_available": True
         })
     except Exception as e:

@@ -9,7 +9,6 @@ function TestRefactorer() {
   const [agentMode, setAgentMode] = useState("single");
   const [modelType, setModelType] = useState("ollama");
   const [modelName, setModelName] = useState("llama3.2");
-  const [temperature, setTemperature] = useState(0.6);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
@@ -83,7 +82,7 @@ function TestRefactorer() {
         model_type: modelType,
         model_name: modelName,
         agent_mode: agentMode,
-        temperature: parseFloat(temperature)
+        temperature: 0.6
       });
 
       setResult(response);
@@ -242,19 +241,6 @@ function TestRefactorer() {
                     ))
                 }
               </select>
-            </div>
-
-            <div className="config-item">
-              <label>Temperature: {temperature}</label>
-              <input 
-                type="range" 
-                min="0" 
-                max="1" 
-                step="0.1"
-                value={temperature} 
-                onChange={(e) => setTemperature(e.target.value)}
-                disabled={loading}
-              />
             </div>
           </div>
 
