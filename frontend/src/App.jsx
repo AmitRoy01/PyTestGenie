@@ -6,10 +6,10 @@ import Login from "./components/Login";
 import AdminPanel from "./components/AdminPanel";
 import authService from "./services/authService";
 import "./App.css";
-import logoUrl from "../../assets/pyTestGenieLogo.png";
-import genieImageUrl from "../../assets/pyTestGenie.png";
-//import genieSoundUrl from "../../assets/genie_appear.m4a";
-import genieSoundUrl from "../../assets/ginie_sound.mp3";
+import logoUrl from "./assets/pyTestGenieLogo.png";
+import genieImageUrl from "./assets/pyTestGenie.png";
+//import genieSoundUrl from "./assets/genie_appear.m4a";
+import genieSoundUrl from "./assets/ginie_sound.mp3";
 
 
 function App() {
