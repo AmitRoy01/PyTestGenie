@@ -419,7 +419,7 @@ def test_discount():
 11. **Constructor Initialization** - Heavy setup in __init__
 12. **Default Test** - Auto-generated unchanged test
 13. **Duplicate Assert** - Same assertion repeated
-14. **Unknown Test** - Non-standard test patterns
+14. **Missing Assertion** - Test method with no assertions
 15. **General Fixture** - Overly broad fixtures
 
 ---

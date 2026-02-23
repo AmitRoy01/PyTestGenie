@@ -1,14 +1,15 @@
 import React, { useState, useEffect } from "react";
 import TestGenerator from "./components/TestGenerator";
 import SmellDetector from "./components/SmellDetector";
+import TestRefactorer from "./components/TestRefactorer";
 import Login from "./components/Login";
 import AdminPanel from "./components/AdminPanel";
 import authService from "./services/authService";
 import "./App.css";
-import logoUrl from "../../assets/pyTestGenieLogo.png";
-import genieImageUrl from "../../assets/pyTestGenie.png";
-//import genieSoundUrl from "../../assets/genie_appear.m4a";
-import genieSoundUrl from "../../assets/ginie_sound.mp3";
+import logoUrl from "./assets/pyTestGenieLogo.png";
+import genieImageUrl from "./assets/pyTestGenie.png";
+//import genieSoundUrl from "./assets/genie_appear.m4a";
+import genieSoundUrl from "./assets/ginie_sound.mp3";
 
 
 function App() {
@@ -72,7 +73,7 @@ function App() {
               <img src={logoUrl} alt="PyTestGenie Logo" className="app-logo" />
               <h1>PyTestGenie</h1>
             </div>
-            <p>Automated Test Generation & Smell Detection</p>
+            <p>Automated Test Generation, Smell Detection & Refactoring</p>
           </div>
           <div className="header-user">
             <span className="user-name">
@@ -101,6 +102,13 @@ function App() {
           <span className="tab-icon">🔍</span>
           Test Smell Detector
         </button>
+        <button
+          className={`tab-button ${activeTab === "refactorer" ? "active" : ""}`}
+          onClick={() => setActiveTab("refactorer")}
+        >
+          <span className="tab-icon">🔧</span>
+          Test Code Refactorer
+        </button>
         {user?.is_admin && (
           <button
             className={`tab-button ${activeTab === "admin" ? "active" : ""}`}
@@ -115,6 +123,7 @@ function App() {
       <main className="main-content">
         {activeTab === "generator" && <TestGenerator />}
         {activeTab === "detector" && <SmellDetector />}
+        {activeTab === "refactorer" && <TestRefactorer />}
         {activeTab === "admin" && user?.is_admin && <AdminPanel />}
       </main>
 

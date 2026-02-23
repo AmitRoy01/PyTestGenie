@@ -1,8 +1,9 @@
 import React, { useState } from "react";
 import axios from "axios";
+import RefactoringPanel from "./RefactoringPanel";
 
-const BACKEND_URL = import.meta.env.VITE_API_BASE || 'http://localhost:5000/api';
-const API_BASE = `${BACKEND_URL}/test-generator`;
+const API_BASE = `${import.meta.env.VITE_API_BASE_URL || 'https://pytestgenie.onrender.com/api'}/test-generator`;
+const SMELL_API_BASE = `${import.meta.env.VITE_API_BASE_URL || 'https://pytestgenie.onrender.com/api'}/smell-detector`;
 
 function TestGenerator() {
   const [code, setCode] = useState("");
@@ -15,6 +16,8 @@ function TestGenerator() {
   const [aiModel, setAiModel] = useState("gpt-oss");
   const [smellResults, setSmellResults] = useState(null);
   const [generatingAiReport, setGeneratingAiReport] = useState(false);
+  const [showRefactoring, setShowRefactoring] = useState(false);
+  const [detectedSmells, setDetectedSmells] = useState([]);
   
   // File upload states
   const [inputMode, setInputMode] = useState("paste"); // "paste", "file", "project"
@@ -182,11 +185,12 @@ function TestGenerator() {
 
     try {
       const resp = await axios.post(
-        `${BACKEND_URL}/smell-detector/analyze/code`,
+        `${SMELL_API_BASE}/analyze/code`,
         { code: testCode, filename: "generated_test.py" }
       );
       if (resp.data.status === "success") {
         setSmellResults(resp.data);
+        setDetectedSmells(resp.data.smells || []);
       }
     } catch (err) {
       alert("Error detecting smells: " + err.message);
@@ -194,19 +198,19 @@ function TestGenerator() {
   };
 
   const openReport = () => {
-    window.open(`${BACKEND_URL}/smell-detector/report`, "_blank");
+    window.open(`${SMELL_API_BASE}/report`, "_blank");
   };
 
   const openAiReport = () => {
-    window.open(`${BACKEND_URL}/smell-detector/report/ai`, "_blank");
+    window.open(`${SMELL_API_BASE}/report/ai`, "_blank");
   };
 
   const downloadReportFile = () => {
-    window.open(`${BACKEND_URL}/smell-detector/report/download`, "_blank");
+    window.open(`${SMELL_API_BASE}/report/download`, "_blank");
   };
 
   const downloadAiReportFile = () => {
-    window.open(`${BACKEND_URL}/smell-detector/report/ai/download`, "_blank");
+    window.open(`${SMELL_API_BASE}/report/ai/download`, "_blank");
   };
 
   const generateAiReport = async () => {
@@ -214,7 +218,7 @@ function TestGenerator() {
     try {
       setGeneratingAiReport(true);
       await axios.post(
-        `${BACKEND_URL}/smell-detector/analyze/code?use_llm=true`,
+        `${SMELL_API_BASE}/analyze/code?use_llm=true`,
         { code: testCode, filename: "generated_test.py" }
       );
       setGeneratingAiReport(false);
@@ -526,10 +530,25 @@ function TestGenerator() {
                       >
                         ⬇️ Download AI Report
                       </button>
+                      {smellResults.smells && smellResults.smells.length > 0 && (
+                        <button 
+                          className="btn btn-primary" 
+                          style={{ marginLeft: "10px" }} 
+                          onClick={() => setShowRefactoring(!showRefactoring)}
+                        >
+                          {showRefactoring ? '🔼 Hide Refactoring' : '🔧 Refactor Code'}
+                        </button>
+                      )}
                 </div>
               )}
             </div>
           )}
+        </div>
+      )}
+
+      {showRefactoring && testCode && (
+        <div className="section">
+          <RefactoringPanel code={testCode} detectedSmells={detectedSmells} />
         </div>
       )}
     </div>

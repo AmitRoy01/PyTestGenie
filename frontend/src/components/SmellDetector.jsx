@@ -1,7 +1,8 @@
 import React, { useState } from "react";
 import axios from "axios";
+import RefactoringPanel from "./RefactoringPanel";
 
-const API_BASE = `${import.meta.env.VITE_API_BASE || 'http://localhost:5000/api'}/smell-detector`;
+const API_BASE = `${import.meta.env.VITE_API_BASE_URL || 'https://pytestgenie.onrender.com/api'}/smell-detector`;
 
 function SmellDetector() {
   const [mode, setMode] = useState("code"); // code, file, directory, github
@@ -12,17 +13,23 @@ function SmellDetector() {
   const [selectedFile, setSelectedFile] = useState(null);
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [generatingAiReport, setGeneratingAiReport] = useState(false);
+  const [showRefactoring, setShowRefactoring] = useState(false);
+  const [analyzedCode, setAnalyzedCode] = useState("");
+  const [detectedSmells, setDetectedSmells] = useState([]);
 
   const handleAnalyzeCode = async () => {
     if (!code) return;
     
     setLoading(true);
+    setShowRefactoring(false);
     try {
       const resp = await axios.post(`${API_BASE}/analyze/code`, {
         code,
         filename: "test_code.py"
       });
       setResults(resp.data);
+      setAnalyzedCode(code);
+      setDetectedSmells(resp.data.smells || []);
       setLoading(false);
     } catch (err) {
       alert("Error: " + err.message);
@@ -311,7 +318,22 @@ function SmellDetector() {
                 ⬇️ Download AI Report
               </button>
             )}
+            {mode === "code" && results.smells && results.smells.length > 0 && (
+              <button 
+                className="btn btn-primary" 
+                style={{ marginLeft: "10px", marginTop: "10px" }} 
+                onClick={() => setShowRefactoring(!showRefactoring)}
+              >
+                {showRefactoring ? '🔼 Hide Refactoring' : '🔧 Refactor Code'}
+              </button>
+            )}
           </div>
+        </div>
+      )}
+
+      {showRefactoring && mode === "code" && (
+        <div className="section">
+          <RefactoringPanel code={analyzedCode} detectedSmells={detectedSmells} />
         </div>
       )}
     </div>
