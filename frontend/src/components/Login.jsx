@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import authService from '../services/authService';
+import ForgotPassword from './ForgotPassword';
 import '../App.css';
 
 function Login({ onLoginSuccess }) {
   const [isLogin, setIsLogin] = useState(true);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -54,6 +56,11 @@ function Login({ onLoginSuccess }) {
       }
     }
   };
+
+  // Show forgot password component
+  if (showForgotPassword) {
+    return <ForgotPassword onBackToLogin={() => setShowForgotPassword(false)} />;
+  }
 
   return (
     <div className="login-container">
@@ -121,6 +128,19 @@ function Login({ onLoginSuccess }) {
               minLength={6}
             />
           </div>
+
+          {isLogin && (
+            <div style={{ textAlign: 'right', marginTop: '-10px', marginBottom: '15px' }}>
+              <button
+                type="button"
+                className="link-button"
+                onClick={() => setShowForgotPassword(true)}
+                style={{ fontSize: '13px', color: '#667eea' }}
+              >
+                Forgot password?
+              </button>
+            </div>
+          )}
 
           {message.text && (
             <div className={`message ${message.type}`}>

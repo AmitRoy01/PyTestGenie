@@ -1,10 +1,14 @@
 """Configuration settings for the application."""
 
 import os
+from pathlib import Path
 from dotenv import load_dotenv
 
-# Load environment variables
-load_dotenv()
+# Get the backend directory path
+backend_dir = Path(__file__).resolve().parent.parent
+
+# Load environment variables from backend/.env
+load_dotenv(dotenv_path=backend_dir / '.env')
 
 
 class Config:

@@ -12,6 +12,7 @@ from routes.test_generation import test_gen_bp
 from routes.smell_detection import smell_detect_bp
 from routes.auth import auth_bp
 from routes.admin import admin_bp
+from routes.refactoring import refactoring_bp
 
 
 def create_app(config_name='development'):
@@ -23,10 +24,10 @@ def create_app(config_name='development'):
     # Load configuration
     app.config.from_object(config[config_name])
     
-    # Setup CORS - Allow all origins in development
+    # Setup CORS - origins loaded from CORS_ORIGINS env variable
     CORS(app, resources={
         r"/api/*": {
-            "origins": "*",
+            "origins": app.config['CORS_ORIGINS'],
             "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
             "allow_headers": ["Content-Type", "Authorization"]
         }
@@ -44,6 +45,7 @@ def create_app(config_name='development'):
     app.register_blueprint(smell_detect_bp, url_prefix='/api/smell-detector')
     app.register_blueprint(auth_bp, url_prefix='/api/auth')
     app.register_blueprint(admin_bp, url_prefix='/api/admin')
+    app.register_blueprint(refactoring_bp, url_prefix='/api/refactoring')
     
     # Root endpoint
     @app.route('/')
@@ -55,7 +57,8 @@ def create_app(config_name='development'):
                 "test_generator": "/api/test-generator",
                 "smell_detector": "/api/smell-detector",
                 "authentication": "/api/auth",
-                "admin": "/api/admin"
+                "admin": "/api/admin",
+                "refactoring": "/api/refactoring"
             }
         })
     
@@ -67,7 +70,11 @@ def create_app(config_name='development'):
     return app
 
 
+# Module-level app instance for production WSGI servers (gunicorn)
+app = create_app(os.getenv('FLASK_ENV', 'production'))
+
+
 if __name__ == '__main__':
-    app = create_app('development')
+    port = int(os.getenv('PORT', 5000))
     # use_reloader=False prevents Windows socket errors
-    app.run(debug=True, host='0.0.0.0', port=5000, use_reloader=False)
+    app.run(debug=True, host='0.0.0.0', port=port, use_reloader=False)

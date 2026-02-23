@@ -9,12 +9,6 @@ export default defineConfig({
     fs: {
       // allow importing assets from project root (to access ../assets)
       allow: [path.resolve(__dirname, '..')]
-    },
-    proxy: {
-      '/api': {
-        target: 'http://localhost:5000',
-        changeOrigin: true
-      }
     }
   }
 })

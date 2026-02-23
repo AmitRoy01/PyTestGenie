@@ -163,7 +163,7 @@ class Detector:
 				occ = self.how_many_assertions( source, method )
 				if ( len(occ) == 0 ):
 					occ.append(method.initial_line)
-					self.add_test_smell_occurence( "Unknown Test", method.name, occ)
+					self.add_test_smell_occurence( "Missing Assertion", method.name, occ)
 				occ.clear()
 
 
