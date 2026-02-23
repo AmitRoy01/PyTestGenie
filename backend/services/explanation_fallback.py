@@ -17,7 +17,7 @@ TEMPLATE = {
         "Reason: Sleep or waits are used in `{method}` at lines {lines}. Time-based waiting makes tests flaky and slow.\n"
         "Fix: Replace sleeps with synchronization primitives (events, conditions) or deterministic hooks; in async flows, await signals instead of fixed delays."
     ),
-    "Unknown Test": (
+    "Missing Assertion": (
         "Reason: `{method}` at line {first_line} looks like a test but contains no assertions. This makes the test non-verifying.\n"
         "Fix: Add assertions for expected outcomes, or demote this to a helper/fixture."
     ),

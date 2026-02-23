@@ -122,3 +122,4 @@ dmypy.json
 
 # profiling data
 .prof
+tmpclaude*

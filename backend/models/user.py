@@ -160,3 +160,111 @@ class UserModel:
     def email_exists(self, email: str) -> bool:
         """Check if email already exists"""
         return self.users.count_documents({'email': email}) > 0
+    
+    def set_password_reset_code(self, email: str, reset_code: str, expiration: datetime) -> bool:
+        """
+        Set password reset code for a user
+        
+        Args:
+            email: User's email address
+            reset_code: Generated reset code
+            expiration: Expiration datetime for the code
+        
+        Returns:
+            True if successful, False otherwise
+        """
+        try:
+            result = self.users.update_one(
+                {'email': email},
+                {'$set': {
+                    'reset_code': reset_code,
+                    'reset_code_expiration': expiration,
+                    'updated_at': datetime.utcnow()
+                }}
+            )
+            return result.modified_count > 0
+        except Exception as e:
+            print(f"Error setting reset code: {e}")
+            return False
+    
+    def verify_reset_code(self, email: str, reset_code: str) -> tuple[bool, str]:
+        """
+        Verify password reset code
+        
+        Args:
+            email: User's email address
+            reset_code: Reset code to verify
+        
+        Returns:
+            Tuple of (is_valid, message)
+        """
+        try:
+            user = self.users.find_one({'email': email})
+            
+            if not user:
+                return False, "User not found"
+            
+            if 'reset_code' not in user or 'reset_code_expiration' not in user:
+                return False, "No reset code found"
+            
+            if user['reset_code'] != reset_code:
+                return False, "Invalid reset code"
+            
+            if datetime.utcnow() > user['reset_code_expiration']:
+                return False, "Reset code has expired"
+            
+            return True, "Code verified successfully"
+        
+        except Exception as e:
+            print(f"Error verifying reset code: {e}")
+            return False, f"Verification failed: {str(e)}"
+    
+    def clear_reset_code(self, email: str) -> bool:
+        """
+        Clear password reset code after it's been used
+        
+        Args:
+            email: User's email address
+        
+        Returns:
+            True if successful, False otherwise
+        """
+        try:
+            result = self.users.update_one(
+                {'email': email},
+                {'$unset': {
+                    'reset_code': '',
+                    'reset_code_expiration': ''
+                },
+                '$set': {
+                    'updated_at': datetime.utcnow()
+                }}
+            )
+            return result.modified_count > 0
+        except Exception as e:
+            print(f"Error clearing reset code: {e}")
+            return False
+    
+    def update_password(self, email: str, new_hashed_password: str) -> bool:
+        """
+        Update user's password
+        
+        Args:
+            email: User's email address
+            new_hashed_password: New hashed password
+        
+        Returns:
+            True if successful, False otherwise
+        """
+        try:
+            result = self.users.update_one(
+                {'email': email},
+                {'$set': {
+                    'password': new_hashed_password,
+                    'updated_at': datetime.utcnow()
+                }}
+            )
+            return result.modified_count > 0
+        except Exception as e:
+            print(f"Error updating password: {e}")
+            return False

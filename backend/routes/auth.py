@@ -148,3 +148,153 @@ def verify_token():
     
     except Exception as e:
         return jsonify({'error': f'Token verification failed: {str(e)}'}), 500
+
+
+@auth_bp.route('/forgot-password', methods=['POST'])
+def forgot_password():
+    """
+    Request password reset - sends reset code to email
+    
+    Request Body:
+        {
+            "email": "string"
+        }
+    
+    Returns:
+        JSON response with status
+    """
+    try:
+        data = request.get_json()
+        
+        if not data:
+            return jsonify({'error': 'No data provided'}), 400
+        
+        email = data.get('email', '').strip()
+        
+        if not email:
+            return jsonify({'error': 'Email is required'}), 400
+        
+        # Request password reset
+        success, message = auth_service.request_password_reset(email)
+        
+        if success:
+            return jsonify({'message': message}), 200
+        else:
+            return jsonify({'error': message}), 400
+    
+    except Exception as e:
+        return jsonify({'error': f'Password reset request failed: {str(e)}'}), 500
+
+
+@auth_bp.route('/verify-reset-code', methods=['POST'])
+def verify_reset_code():
+    """
+    Verify password reset code
+    
+    Request Body:
+        {
+            "email": "string",
+            "code": "string"
+        }
+    
+    Returns:
+        JSON response with verification status
+    """
+    try:
+        data = request.get_json()
+        
+        if not data:
+            return jsonify({'error': 'No data provided'}), 400
+        
+        email = data.get('email', '').strip()
+        code = data.get('code', '').strip()
+        
+        if not email or not code:
+            return jsonify({'error': 'Email and code are required'}), 400
+        
+        # Verify reset code
+        success, message = auth_service.verify_reset_code(email, code)
+        
+        if success:
+            return jsonify({'message': message}), 200
+        else:
+            return jsonify({'error': message}), 400
+    
+    except Exception as e:
+        return jsonify({'error': f'Code verification failed: {str(e)}'}), 500
+
+
+@auth_bp.route('/reset-password', methods=['POST'])
+def reset_password():
+    """
+    Reset password with verified code
+    
+    Request Body:
+        {
+            "email": "string",
+            "code": "string",
+            "new_password": "string"
+        }
+    
+    Returns:
+        JSON response with status
+    """
+    try:
+        data = request.get_json()
+        
+        if not data:
+            return jsonify({'error': 'No data provided'}), 400
+        
+        email = data.get('email', '').strip()
+        code = data.get('code', '').strip()
+        new_password = data.get('new_password', '')
+        
+        if not email or not code or not new_password:
+            return jsonify({'error': 'Email, code, and new password are required'}), 400
+        
+        # Reset password
+        success, message = auth_service.reset_password(email, code, new_password)
+        
+        if success:
+            return jsonify({'message': message}), 200
+        else:
+            return jsonify({'error': message}), 400
+    
+    except Exception as e:
+        return jsonify({'error': f'Password reset failed: {str(e)}'}), 500
+
+
+@auth_bp.route('/resend-reset-code', methods=['POST'])
+def resend_reset_code():
+    """
+    Resend password reset code
+    
+    Request Body:
+        {
+            "email": "string"
+        }
+    
+    Returns:
+        JSON response with status
+    """
+    try:
+        data = request.get_json()
+        
+        if not data:
+            return jsonify({'error': 'No data provided'}), 400
+        
+        email = data.get('email', '').strip()
+        
+        if not email:
+            return jsonify({'error': 'Email is required'}), 400
+        
+        # Request new reset code (same as forgot password)
+        success, message = auth_service.request_password_reset(email)
+        
+        if success:
+            return jsonify({'message': 'Reset code resent to your email'}), 200
+        else:
+            return jsonify({'error': message}), 400
+    
+    except Exception as e:
+        return jsonify({'error': f'Failed to resend code: {str(e)}'}), 500
