@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: pytestgenie-backend
+    runtime: python
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app_unified:app --bind 0.0.0.0:$PORT --workers 2 --timeout 120
+    envVars:
+      - key: FLASK_ENV
+        value: production
+      - key: PYTHONWARNINGS
+        value: ignore::FutureWarning

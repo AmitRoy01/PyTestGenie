@@ -76,5 +76,6 @@ app = create_app(os.getenv('FLASK_ENV', 'production'))
 
 if __name__ == '__main__':
     port = int(os.getenv('PORT', 5000))
+    debug = os.getenv('FLASK_ENV', 'production') != 'production'
     # use_reloader=False prevents Windows socket errors
-    app.run(debug=True, host='0.0.0.0', port=port, use_reloader=False)
+    app.run(debug=debug, host='0.0.0.0', port=port, use_reloader=False)
