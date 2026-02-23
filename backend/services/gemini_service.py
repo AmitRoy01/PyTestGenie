@@ -4,7 +4,8 @@ from typing import List, Dict, Tuple
 from config.settings import Config
 
 try:
-    import google.generativeai as genai
+    import google.genai as genai
+    from google.genai.types import GenerateContentResponse
 except ImportError:
     genai = None
 
@@ -16,10 +17,10 @@ class GeminiClient:
         self.api_key = api_key or Config.GEMINI_API_KEY
         self.model_name = model_name or Config.GEMINI_MODEL
         self.enabled = bool(self.api_key) and genai is not None
-        self._model = None
+        self._client = None
         if self.enabled:
-            genai.configure(api_key=self.api_key)
-            self._model = genai.GenerativeModel(self.model_name)
+            # Use new google-genai API
+            self._client = genai.Client(api_key=self.api_key)
 
     def explain_smell(self, code_context: str, smell_type: str, method_name: str, lines: List[int]) -> str | None:
         if not self.enabled:
@@ -38,21 +39,15 @@ class GeminiClient:
             f"""{code_context}"""
         )
         try:
-            resp = self._model.generate_content(prompt)
-            # google-generativeai returns candidates with text
+            # Use new google-genai API: client.models.generate_content()
+            resp = self._client.models.generate_content(
+                model=self.model_name,
+                contents=prompt
+            )
+            # New API returns response with text attribute
             text = getattr(resp, "text", None)
             if text:
                 return text.strip()
-            # Fallback for older SDKs: concatenate part texts
-            if hasattr(resp, "candidates") and resp.candidates:
-                parts = []
-                for c in resp.candidates:
-                    if hasattr(c, "content") and hasattr(c.content, "parts"):
-                        for p in c.content.parts:
-                            if getattr(p, "text", None):
-                                parts.append(p.text)
-                if parts:
-                    return "\n".join(parts).strip()
             return None
         except Exception as e:
             # On 429 or other failures, return None and let callers fallback
