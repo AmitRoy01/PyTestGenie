@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
 import refactoringService from "../services/refactoringService";
+import SaveVersionModal from "./SaveVersionModal";
 
-function TestRefactorer() {
+function TestRefactorer({ initialData }) {
   const [mode, setMode] = useState("code"); // code or file
   const [code, setCode] = useState("");
   const [selectedFile, setSelectedFile] = useState(null);
@@ -15,6 +16,16 @@ function TestRefactorer() {
   const [availableModels, setAvailableModels] = useState({ ollama: [], huggingface: [] });
   const [availableSmells, setAvailableSmells] = useState([]);
   const [healthStatus, setHealthStatus] = useState(null);
+  const [showSaveModal, setShowSaveModal] = useState(false);
+
+  // Pre-populate from loaded version
+  useEffect(() => {
+    if (!initialData) return;
+    if (initialData.test_code)      setCode(initialData.test_code);
+    if (initialData.refactor_smell) setSelectedSmell(initialData.refactor_smell);
+    if (initialData.refactor_model) setModelName(initialData.refactor_model);
+    if (initialData.refactored_code) setResult({ refactored_code: initialData.refactored_code });
+  }, [initialData]);
 
   useEffect(() => {
     // Fetch available models
@@ -106,6 +117,7 @@ function TestRefactorer() {
   };
 
   return (
+    <>
     <div className="module-container">
       <div className="section">
         <h2>🔧 AI-Powered Test Code Refactorer</h2>
@@ -278,6 +290,13 @@ function TestRefactorer() {
             <div className="result-header">
               <h3>✅ Refactoring Complete</h3>
               {result.error && <p className="warning">⚠️ {result.error}</p>}
+              <button
+                className="btn btn-primary"
+                style={{ marginTop: 8 }}
+                onClick={() => setShowSaveModal(true)}
+              >
+                💾 Save to Project
+              </button>
             </div>
 
             <div className="code-comparison">
@@ -378,6 +397,23 @@ function TestRefactorer() {
         </div>
       )}
     </div>
+
+    {showSaveModal && (
+      <SaveVersionModal
+        open={showSaveModal}
+        onClose={() => setShowSaveModal(false)}
+        onSaved={() => setShowSaveModal(false)}
+        step="refactored"
+        defaultLabel="After refactoring"
+        data={{
+          test_code:       code,
+          refactored_code: result?.refactored_code || '',
+          refactor_model:  modelName,
+          refactor_smell:  selectedSmell,
+        }}
+      />
+    )}
+    </>
   );
 }
 

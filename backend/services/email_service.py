@@ -1,7 +1,4 @@
-"""
-Email Service
-Handles sending emails for password reset and other notifications
-"""
+
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
@@ -36,18 +33,7 @@ class EmailService:
         return ''.join(random.choices(string.digits, k=length))
     
     def send_email(self, to_email: str, subject: str, body: str, is_html: bool = True) -> tuple[bool, str]:
-        """
-        Send an email
         
-        Args:
-            to_email: Recipient email address
-            subject: Email subject
-            body: Email body content
-            is_html: Whether body is HTML (default: True)
-        
-        Returns:
-            Tuple of (success, message)
-        """
         try:
             # Check if email is configured
             if not self.smtp_username or not self.smtp_password:
@@ -84,17 +70,7 @@ class EmailService:
             return False, f"Failed to send email: {str(e)}"
     
     def send_password_reset_email(self, to_email: str, username: str, reset_code: str) -> tuple[bool, str]:
-        """
-        Send password reset code email
         
-        Args:
-            to_email: User's email address
-            username: User's username
-            reset_code: Generated reset code
-        
-        Returns:
-            Tuple of (success, message)
-        """
         subject = "Password Reset Code - PyTestGenie"
         
         body = f"""

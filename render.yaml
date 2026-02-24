@@ -11,3 +11,5 @@ services:
         value: ignore::FutureWarning
       - key: CORS_ORIGINS
         value: "*"
+      - key: ACCESS_TOKEN_EXPIRE_MINUTES
+        value: "1440"

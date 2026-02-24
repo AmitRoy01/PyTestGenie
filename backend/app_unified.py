@@ -13,6 +13,7 @@ from routes.smell_detection import smell_detect_bp
 from routes.auth import auth_bp
 from routes.admin import admin_bp
 from routes.refactoring import refactoring_bp
+from routes.projects import projects_bp
 
 
 def create_app(config_name='development'):
@@ -60,6 +61,7 @@ def create_app(config_name='development'):
     app.register_blueprint(auth_bp, url_prefix='/api/auth')
     app.register_blueprint(admin_bp, url_prefix='/api/admin')
     app.register_blueprint(refactoring_bp, url_prefix='/api/refactoring')
+    app.register_blueprint(projects_bp, url_prefix='/api/projects')
     
     # Root endpoint
     @app.route('/')
@@ -72,7 +74,8 @@ def create_app(config_name='development'):
                 "smell_detector": "/api/smell-detector",
                 "authentication": "/api/auth",
                 "admin": "/api/admin",
-                "refactoring": "/api/refactoring"
+                "refactoring": "/api/refactoring",
+                "projects": "/api/projects"
             }
         })
     

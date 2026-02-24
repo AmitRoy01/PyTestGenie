@@ -1,10 +1,22 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import axios from "axios";
 import RefactoringPanel from "./RefactoringPanel";
+import SaveVersionModal from "./SaveVersionModal";
 
 const API_BASE = `${import.meta.env.VITE_API_BASE_URL || 'https://pytestgenie.onrender.com/api'}/smell-detector`;
 
-function SmellDetector() {
+// LLM model catalogue mirrors backend AVAILABLE_MODELS
+const LLM_MODELS = {
+  ollama: [
+    { name: "Llama 3.2", model_id: "llama3.2" },
+  ],
+  huggingface: [
+    { name: "Mistral 7B Instruct v0.2", model_id: "mistralai/Mistral-7B-Instruct-v0.2" },
+    { name: "GPT-OSS 20B", model_id: "openai/gpt-oss-20b:groq" },
+  ],
+};
+
+function SmellDetector({ initialData }) {
   const [mode, setMode] = useState("code"); // code, file, directory, github
   const [code, setCode] = useState("");
   const [githubUrl, setGithubUrl] = useState("");
@@ -19,6 +31,26 @@ function SmellDetector() {
   const [fileRefactoringOpen, setFileRefactoringOpen] = useState({});
   const [mountedFileRefactoring, setMountedFileRefactoring] = useState({});
   const [mountedRefactoring, setMountedRefactoring] = useState(false);
+  const [showSaveModal, setShowSaveModal] = useState(false);
+  const [saveFileIdx, setSaveFileIdx] = useState(null); // null = single-file, number = per-file
+
+  // Detection method
+  const [detectionMethod, setDetectionMethod] = useState("rule_based"); // rule_based | llm_based
+  const [llmModelType, setLlmModelType] = useState("ollama");
+  const [llmModelName, setLlmModelName] = useState("llama3.2");
+
+  // Pre-populate from loaded version
+  useEffect(() => {
+    if (!initialData) return;
+    if (initialData.source_code) { setCode(initialData.source_code); setAnalyzedCode(initialData.source_code); }
+    if (initialData.smell_results) { setResults(initialData.smell_results); setDetectedSmells(initialData.smell_results.smells || []); }
+  }, [initialData]);
+
+  // When model type changes reset model name to first in list
+  const handleLlmModelTypeChange = (type) => {
+    setLlmModelType(type);
+    setLlmModelName(LLM_MODELS[type][0].model_id);
+  };
 
   const handleAnalyzeCode = async () => {
     if (!code) return;
@@ -27,10 +59,13 @@ function SmellDetector() {
     setShowRefactoring(false);
     setMountedRefactoring(false);
     try {
-      const resp = await axios.post(`${API_BASE}/analyze/code`, {
+      const payload = {
         code,
-        filename: "test_code.py"
-      });
+        filename: "test_code.py",
+        detection_method: detectionMethod,
+        ...(detectionMethod === 'llm_based' && { model_type: llmModelType, model_name: llmModelName }),
+      };
+      const resp = await axios.post(`${API_BASE}/analyze/code`, payload);
       setResults(resp.data);
       setAnalyzedCode(code);
       setDetectedSmells(resp.data.smells || []);
@@ -54,8 +89,14 @@ function SmellDetector() {
     const formData = new FormData();
     formData.append("file", selectedFile);
 
+    const params = new URLSearchParams({ detection_method: detectionMethod });
+    if (detectionMethod === 'llm_based') {
+      params.set('model_type', llmModelType);
+      params.set('model_name', llmModelName);
+    }
+
     try {
-      const resp = await axios.post(`${API_BASE}/analyze/file`, formData);
+      const resp = await axios.post(`${API_BASE}/analyze/file?${params}`, formData);
       setResults(resp.data);
       setAnalyzedCode(resp.data.code || "");
       setDetectedSmells(resp.data.smells || []);
@@ -82,8 +123,14 @@ function SmellDetector() {
       formData.append("files[]", selectedFiles[i]);
     }
 
+    const params = new URLSearchParams({ detection_method: detectionMethod });
+    if (detectionMethod === 'llm_based') {
+      params.set('model_type', llmModelType);
+      params.set('model_name', llmModelName);
+    }
+
     try {
-      const resp = await axios.post(`${API_BASE}/analyze/directory`, formData);
+      const resp = await axios.post(`${API_BASE}/analyze/directory?${params}`, formData);
       setResults(resp.data);
       setAnalyzedCode(resp.data.code || "");
       setDetectedSmells(resp.data.smells || []);
@@ -102,9 +149,12 @@ function SmellDetector() {
     setFileRefactoringOpen({});
     setMountedFileRefactoring({});
     try {
-      const resp = await axios.post(`${API_BASE}/analyze/github`, {
-        github_url: githubUrl
-      });
+      const payload = {
+        github_url: githubUrl,
+        detection_method: detectionMethod,
+        ...(detectionMethod === 'llm_based' && { model_type: llmModelType, model_name: llmModelName }),
+      };
+      const resp = await axios.post(`${API_BASE}/analyze/github`, payload);
       setResults(resp.data);
       setAnalyzedCode(resp.data.code || "");
       setDetectedSmells(resp.data.smells || []);
@@ -160,6 +210,58 @@ function SmellDetector() {
     <div className="module-container">
       <div className="section">
         <h2>🔍 Detect Test Smells</h2>
+
+        {/* ---- Detection Method Selector ---- */}
+        <div className="method-selector" style={{ marginBottom: "16px" }}>
+          <label className="radio-label">
+            <input
+              type="radio"
+              checked={detectionMethod === "rule_based"}
+              onChange={() => setDetectionMethod("rule_based")}
+            />
+            <span>📏 Rule-Based</span>
+          </label>
+          <label className="radio-label" style={{ marginLeft: "18px" }}>
+            <input
+              type="radio"
+              checked={detectionMethod === "llm_based"}
+              onChange={() => setDetectionMethod("llm_based")}
+            />
+            <span>🧠 LLM-Based</span>
+          </label>
+        </div>
+
+        {/* ---- LLM model picker (only visible when llm_based) ---- */}
+        {detectionMethod === "llm_based" && (
+          <div style={{ display: "flex", gap: "14px", flexWrap: "wrap", marginBottom: "16px", alignItems: "center" }}>
+            <div>
+              <label style={{ fontWeight: "bold", marginRight: "8px" }}>🖥️ Provider:</label>
+              <select
+                value={llmModelType}
+                onChange={(e) => handleLlmModelTypeChange(e.target.value)}
+                style={{ padding: "7px 12px", borderRadius: "6px", border: "1px solid #ccc", fontSize: "14px" }}
+              >
+                <option value="ollama">Ollama (Local)</option>
+                <option value="huggingface">HuggingFace API</option>
+              </select>
+            </div>
+            <div>
+              <label style={{ fontWeight: "bold", marginRight: "8px" }}>🤖 Model:</label>
+              <select
+                value={llmModelName}
+                onChange={(e) => setLlmModelName(e.target.value)}
+                style={{ padding: "7px 12px", borderRadius: "6px", border: "1px solid #ccc", fontSize: "14px" }}
+              >
+                {(LLM_MODELS[llmModelType] || []).map((m) => (
+                  <option key={m.model_id} value={m.model_id}>{m.name}</option>
+                ))}
+              </select>
+            </div>
+            <div style={{ padding: "7px 12px", backgroundColor: "#e8f4fd", borderRadius: "6px", fontSize: "13px", color: "#1565c0" }}>
+              💡 LLM detects smells with line numbers &amp; method names — may take a moment.
+            </div>
+          </div>
+        )}
         
         <div className="mode-selector">
           <button
@@ -310,14 +412,43 @@ function SmellDetector() {
               <div className="smells-list">
                 <h4>Detected Smells:</h4>
                 {results.smells.map((smell, idx) => (
-                  <div key={idx} className="smell-item">
-                    <span className="smell-type">{smell.type}</span>
-                    <span className="smell-method">{smell.method}</span>
-                    <span className="smell-lines">Line {smell.lines}</span>
+                  <div key={idx} className="smell-item" style={{ flexDirection: "column", alignItems: "flex-start", gap: "6px", padding: "10px 12px" }}>
+                    <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "center" }}>
+                      <span className="smell-type">{smell.type}</span>
+                      <span className="smell-method">{smell.method}</span>
+                      {smell.lines && smell.lines.length > 0 && (
+                        <span className="smell-lines">Line {smell.lines}</span>
+                      )}
+                    </div>
+                    {results.detection_method === "llm_based" && smell.explanation && (
+                      <div style={{
+                        marginTop: "4px",
+                        padding: "8px 10px",
+                        background: "#f8f9fa",
+                        borderLeft: "3px solid #e67e22",
+                        borderRadius: "4px",
+                        fontSize: "13px",
+                        color: "#333",
+                        lineHeight: "1.55",
+                        width: "100%",
+                        boxSizing: "border-box",
+                        whiteSpace: "pre-wrap"
+                      }}>
+                        {smell.explanation}
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
             )}
+
+            {/* detection method badge */}
+            <p style={{ fontSize: "12px", color: "#666", marginTop: "4px" }}>
+              <strong>Detection:</strong>{" "}
+              {results.detection_method === "llm_based"
+                ? `🧠 LLM-Based (${results.model_used || llmModelName})`
+                : "📏 Rule-Based"}
+            </p>
 
             {results.report_available && (
               <button className="btn btn-accent" onClick={openReport}>
@@ -353,6 +484,15 @@ function SmellDetector() {
                 {showRefactoring ? '🔼 Hide Refactoring' : '🔧 Refactor Code'}
               </button>
             )}
+            {!results.files && (
+              <button
+                className="btn btn-primary"
+                style={{ marginLeft: "10px", marginTop: "10px" }}
+                onClick={() => { setSaveFileIdx(null); setShowSaveModal(true); }}
+              >
+                💾 Save to Project
+              </button>
+            )}
           </div>
         </div>
       )}
@@ -380,10 +520,31 @@ function SmellDetector() {
               <>
                 <div className="smells-list">
                   {fileResult.smells.map((smell, sidx) => (
-                    <div key={sidx} className="smell-item">
-                      <span className="smell-type">{smell.type}</span>
-                      <span className="smell-method">{smell.method}</span>
-                      <span className="smell-lines">Line {smell.lines}</span>
+                    <div key={sidx} className="smell-item" style={{ flexDirection: "column", alignItems: "flex-start", gap: "6px", padding: "10px 12px" }}>
+                      <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "center" }}>
+                        <span className="smell-type">{smell.type}</span>
+                        <span className="smell-method">{smell.method}</span>
+                        {smell.lines && smell.lines.length > 0 && (
+                          <span className="smell-lines">Line {smell.lines}</span>
+                        )}
+                      </div>
+                      {results.detection_method === "llm_based" && smell.explanation && (
+                        <div style={{
+                          marginTop: "4px",
+                          padding: "8px 10px",
+                          background: "#f8f9fa",
+                          borderLeft: "3px solid #e67e22",
+                          borderRadius: "4px",
+                          fontSize: "13px",
+                          color: "#333",
+                          lineHeight: "1.55",
+                          width: "100%",
+                          boxSizing: "border-box",
+                          whiteSpace: "pre-wrap"
+                        }}>
+                          {smell.explanation}
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -397,6 +558,13 @@ function SmellDetector() {
                 >
                   {fileRefactoringOpen[idx] ? '🔼 Hide Refactoring' : '🔧 Refactor Code'}
                 </button>
+                <button
+                  className="btn btn-primary"
+                  style={{ marginTop: "10px", marginLeft: "8px" }}
+                  onClick={() => { setSaveFileIdx(idx); setShowSaveModal(true); }}
+                >
+                  💾 Save to Project
+                </button>
               </>
             ) : (
               <p style={{ color: "#28a745", marginBottom: 0 }}>✅ No smells detected in this file.</p>
@@ -409,6 +577,24 @@ function SmellDetector() {
           )}
         </div>
       ))}
+
+      {showSaveModal && (
+        <SaveVersionModal
+          open={showSaveModal}
+          onClose={() => setShowSaveModal(false)}
+          onSaved={() => setShowSaveModal(false)}
+          step="smell_detected"
+          defaultLabel="After smell detection"
+          data={saveFileIdx === null ? {
+            source_code:  analyzedCode,
+            smell_results: results,
+          } : {
+            source_code:   results?.files?.[saveFileIdx]?.code || '',
+            source_filename: results?.files?.[saveFileIdx]?.filename || '',
+            smell_results: { smells: results?.files?.[saveFileIdx]?.smells, total_smells: results?.files?.[saveFileIdx]?.smell_count },
+          }}
+        />
+      )}
     </div>
   );
 }
