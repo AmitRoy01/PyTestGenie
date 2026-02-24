@@ -726,20 +726,26 @@ function TestGenerator({ initialData }) {
 
       {/* Floating "Generate Report" button — visible once source code exists */}
       {(code || testCode) && (
-        <button
-          onClick={() => setReportModalOpen(true)}
-          title="Generate Pipeline Report"
-          style={{
-            position: 'fixed', bottom: 28, right: 28, zIndex: 1000,
-            background: 'linear-gradient(135deg,#1a237e,#283593)',
-            color: '#fff', border: 'none', borderRadius: 50,
-            width: 56, height: 56, fontSize: '1.4rem',
-            cursor: 'pointer', boxShadow: '0 4px 16px rgba(0,0,0,.3)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-          }}
-        >
-          📄
-        </button>
+        <div style={{ position: 'fixed', bottom: 28, right: 28, zIndex: 1000, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+          <div className="report-btn-tooltip">
+            Click to generate<br />Pipeline Report
+            <div className="report-btn-tooltip-arrow" />
+          </div>
+          <button
+            onClick={() => setReportModalOpen(true)}
+            title="Generate Pipeline Report"
+            style={{
+              background: 'linear-gradient(135deg,#1a237e,#283593)',
+              color: '#fff', border: 'none', borderRadius: 50,
+              width: 56, height: 56, fontSize: '1.4rem',
+              cursor: 'pointer', boxShadow: '0 4px 16px rgba(0,0,0,.3)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              flexShrink: 0,
+            }}
+          >
+            📄
+          </button>
+        </div>
       )}
 
       <PipelineReportModal
