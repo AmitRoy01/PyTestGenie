@@ -292,7 +292,7 @@ function SmellDetector({ initialData }) {
             className={`mode-btn ${mode === "github" ? "active" : ""}`}
             onClick={() => setMode("github")}
           >
-            🐙 GitHub
+            🐙 GitHub <span style={{ fontSize: "0.78em", opacity: 0.7, fontWeight: "normal" }}>(Optional)</span>
           </button>
         </div>
 

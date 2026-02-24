@@ -11,6 +11,7 @@ import Login          from "./components/Login";
 import AdminPanel     from "./components/AdminPanel";
 import ProjectHistory from "./components/ProjectHistory";
 import ReportArchive  from "./components/ReportArchive";
+import Dashboard      from "./components/Dashboard";
 import authService    from "./services/authService";
 import "./App.css";
 import logoUrl       from "./assets/pyTestGenieLogo.png";
@@ -80,6 +81,10 @@ function Layout({ user, onLogout }) {
       </header>
 
       <nav className="tab-navigation">
+        <NavLink to="/dashboard"
+          className={({ isActive }) => `tab-button${isActive ? " active" : ""}`}>
+          <span className="tab-icon">🏠</span>Dashboard
+        </NavLink>
         <NavLink to="/generator"
           className={({ isActive }) => `tab-button${isActive ? " active" : ""}`}>
           <span className="tab-icon">🚀</span>Test Code Generator
@@ -110,14 +115,15 @@ function Layout({ user, onLogout }) {
 
       <main className="main-content">
         <Routes>
-          <Route path="/"           element={<Navigate to="/generator" replace />} />
+          <Route path="/"           element={<Navigate to="/dashboard" replace />} />
+          <Route path="/dashboard"   element={<Dashboard />} />
           <Route path="/generator"  element={<GeneratorPage />} />
           <Route path="/detector"   element={<DetectorPage />} />
           <Route path="/refactorer" element={<RefactorerPage />} />
           <Route path="/admin"      element={<RequireAdmin><AdminPanel /></RequireAdmin>} />
           <Route path="/history"    element={<ProjectHistory onLoadVersion={handleLoadVersion} />} />
           <Route path="/reports"    element={<ReportArchive />} />
-          <Route path="*"           element={<Navigate to="/generator" replace />} />
+          <Route path="*"           element={<Navigate to="/dashboard" replace />} />
         </Routes>
       </main>
 
