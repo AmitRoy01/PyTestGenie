@@ -2,6 +2,8 @@ import React, { useState, useEffect } from "react";
 import axios from "axios";
 import RefactoringPanel from "./RefactoringPanel";
 import SaveVersionModal from "./SaveVersionModal";
+import PipelineReportModal from "./PipelineReportModal";
+import authService from "../services/authService";
 
 const API_BASE = `${import.meta.env.VITE_API_BASE_URL || 'https://pytestgenie.onrender.com/api'}/test-generator`;
 const SMELL_API_BASE = `${import.meta.env.VITE_API_BASE_URL || 'https://pytestgenie.onrender.com/api'}/smell-detector`;
@@ -38,6 +40,10 @@ function TestGenerator({ initialData }) {
   const [smellDetectionMethod, setSmellDetectionMethod] = useState("rule_based");
   const [smellLlmModelType, setSmellLlmModelType] = useState("ollama");
   const [smellLlmModelName, setSmellLlmModelName] = useState("llama3.2");
+
+  // Pipeline report
+  const [refactoringResult, setRefactoringResult]   = useState(null);
+  const [reportModalOpen,   setReportModalOpen]     = useState(false);
 
   const handleSmellLlmModelTypeChange = (type) => {
     setSmellLlmModelType(type);
@@ -691,7 +697,11 @@ function TestGenerator({ initialData }) {
       {mountedRefactoring && testCode && (
         <div style={{ display: showRefactoring ? 'block' : 'none' }}>
           <div className="section">
-            <RefactoringPanel code={testCode} detectedSmells={detectedSmells} />
+            <RefactoringPanel
+              code={testCode}
+              detectedSmells={detectedSmells}
+              onRefactored={setRefactoringResult}
+            />
           </div>
         </div>
       )}
@@ -713,6 +723,42 @@ function TestGenerator({ initialData }) {
           }}
         />
       )}
+
+      {/* Floating "Generate Report" button — visible once source code exists */}
+      {(code || testCode) && (
+        <button
+          onClick={() => setReportModalOpen(true)}
+          title="Generate Pipeline Report"
+          style={{
+            position: 'fixed', bottom: 28, right: 28, zIndex: 1000,
+            background: 'linear-gradient(135deg,#1a237e,#283593)',
+            color: '#fff', border: 'none', borderRadius: 50,
+            width: 56, height: 56, fontSize: '1.4rem',
+            cursor: 'pointer', boxShadow: '0 4px 16px rgba(0,0,0,.3)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}
+        >
+          📄
+        </button>
+      )}
+
+      <PipelineReportModal
+        open={reportModalOpen}
+        onClose={() => setReportModalOpen(false)}
+        pipelineData={{
+          username:        authService.getUser()?.username || '',
+          inputMode,
+          sourceFilename:  uploadedFile || selectedModule || 'code.py',
+          sourceCode:      code,
+          useAI,
+          algorithm,
+          aiModel,
+          logs,
+          testCode,
+          smellResults,
+          refactorResult:  refactoringResult,
+        }}
+      />
     </div>
   );
 }

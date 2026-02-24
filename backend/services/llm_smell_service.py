@@ -102,19 +102,22 @@ Below is a catalogue of Python test smells you must detect:
 
 Analyze the following Python test file named "{filename}" and identify ALL test smell occurrences.
 
-For EVERY smell found return a JSON array (and nothing else) where each element has:
+For EVERY smell found return a JSON array (and nothing else) where each element has exactly these three keys:
   - "type"       : exact smell name from the catalogue above
   - "method"     : name of the test method (or class) where the smell occurs
-  - "explanation": a clear explanation (2-4 sentences) of WHY this is a smell in this specific method.
-                   Quote the exact problematic lines of code from the method using backtick formatting,
-                   then explain what rule is violated and how the developer should fix it.
+  - "explanation": a plain-text explanation (2-4 sentences) of WHY this is a smell in this specific
+                   method, which rule is violated, and how the developer should fix it.
+                   Reference the problematic code by writing the variable or assertion name inline
+                   (e.g. 'the assert statement on line ...') — do NOT use backtick code fences or
+                   triple-backtick blocks anywhere inside the explanation string.
 
 If NO smells are found, return an empty JSON array: []
 
-Important rules:
-- Output ONLY the JSON array, no markdown fences, no explanation text outside the array.
+CRITICAL formatting rules:
+- Output ONLY the raw JSON array — no markdown fences (no ```), no prose before or after.
+- Every string value must be on a single line. Use \\n if you need a newline inside a string.
+- Do NOT add any extra keys beyond "type", "method", and "explanation".
 - Be precise: report only real smells, not false positives.
-- In "explanation", always include a short quoted code snippet showing the problematic code.
 
 Python test code:
 ```python
@@ -186,14 +189,57 @@ def detect_smells_with_llm(
 # Response parser – robust against common LLM formatting quirks
 # ------------------------------------------------------------------
 
+def _sanitise_for_json(text: str) -> str:
+    """
+    Pre-process the LLM output to fix common JSON-breaking patterns:
+    1. Strip outer markdown code fences  (```json ... ```)
+    2. Collapse multiline triple-backtick blocks *inside* string values
+       into a compact single-line representation so json.loads won't choke.
+    3. Remove any stray literal newlines that sit bare inside a JSON string.
+    """
+    # 1. Strip outer fences
+    text = re.sub(r"^```(?:json)?\s*", "", text.strip(), flags=re.IGNORECASE)
+    text = re.sub(r"\s*```\s*$", "", text)
+    text = text.strip()
+
+    # 2. Collapse multiline code fences that appear inside JSON strings.
+    #    Pattern: ``` ... ``` spanning multiple lines — replace with a placeholder
+    #    that won't break JSON (backtick-content on one line, no raw newlines).
+    def _flatten_fence(m):
+        inner = m.group(1).replace('\n', ' ').replace('"', '\\"').strip()
+        return f'[code: {inner}]'
+
+    text = re.sub(r"```(?:\w+)?\s*\n(.*?)```", _flatten_fence, text, flags=re.DOTALL)
+
+    # 3. Replace remaining literal (unescaped) newlines that sit inside
+    #    a JSON string with a space so json.loads can handle them.
+    #    We do this character-by-character to stay context-aware.
+    result = []
+    in_string = False
+    i = 0
+    while i < len(text):
+        c = text[i]
+        if c == '\\' and in_string:
+            # Consume escape sequence verbatim
+            result.append(c)
+            i += 1
+            if i < len(text):
+                result.append(text[i])
+                i += 1
+            continue
+        if c == '"':
+            in_string = not in_string
+        if c == '\n' and in_string:
+            result.append('\\n')
+        else:
+            result.append(c)
+        i += 1
+    return ''.join(result)
+
+
 def _parse_llm_response(raw: str) -> list:
     """Extract the JSON array from the LLM response, tolerating markdown fences."""
-    text = raw.strip()
-
-    # Strip markdown code fences if present (```json ... ``` or ``` ... ```)
-    text = re.sub(r"^```(?:json)?\s*", "", text, flags=re.IGNORECASE)
-    text = re.sub(r"\s*```$", "", text)
-    text = text.strip()
+    text = _sanitise_for_json(raw)
 
     # Attempt direct parse
     try:

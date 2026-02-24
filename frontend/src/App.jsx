@@ -10,6 +10,7 @@ import TestRefactorer from "./components/TestRefactorer";
 import Login          from "./components/Login";
 import AdminPanel     from "./components/AdminPanel";
 import ProjectHistory from "./components/ProjectHistory";
+import ReportArchive  from "./components/ReportArchive";
 import authService    from "./services/authService";
 import "./App.css";
 import logoUrl       from "./assets/pyTestGenieLogo.png";
@@ -101,6 +102,10 @@ function Layout({ user, onLogout }) {
           className={({ isActive }) => `tab-button${isActive ? " active" : ""}`}>
           <span className="tab-icon">📂</span>My Projects
         </NavLink>
+        <NavLink to="/reports"
+          className={({ isActive }) => `tab-button${isActive ? " active" : ""}`}>
+          <span className="tab-icon">📋</span>Report Archive
+        </NavLink>
       </nav>
 
       <main className="main-content">
@@ -111,6 +116,7 @@ function Layout({ user, onLogout }) {
           <Route path="/refactorer" element={<RefactorerPage />} />
           <Route path="/admin"      element={<RequireAdmin><AdminPanel /></RequireAdmin>} />
           <Route path="/history"    element={<ProjectHistory onLoadVersion={handleLoadVersion} />} />
+          <Route path="/reports"    element={<ReportArchive />} />
           <Route path="*"           element={<Navigate to="/generator" replace />} />
         </Routes>
       </main>
