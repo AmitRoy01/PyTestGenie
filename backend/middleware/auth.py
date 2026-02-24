@@ -26,7 +26,11 @@ def token_required(f):
                 token = auth_header.split(' ')[1]
             except IndexError:
                 return jsonify({'error': 'Invalid token format'}), 401
-        
+
+        # Fallback: accept token as a query parameter (e.g. for direct HTML URLs opened in new tabs)
+        if not token:
+            token = request.args.get('token')
+
         if not token:
             return jsonify({'error': 'Token is missing'}), 401
         

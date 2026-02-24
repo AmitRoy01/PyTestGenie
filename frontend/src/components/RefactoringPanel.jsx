@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import refactoringService from "../services/refactoringService";
 import SaveVersionModal from "./SaveVersionModal";
 
-function RefactoringPanel({ code, detectedSmells }) {
+function RefactoringPanel({ code, detectedSmells, onRefactored }) {
   const [agentMode, setAgentMode] = useState("single");
   const [selectedSmell, setSelectedSmell] = useState("All");
   const [modelType, setModelType] = useState("ollama");
@@ -69,6 +69,17 @@ function RefactoringPanel({ code, detectedSmells }) {
       });
 
       setResult(response);
+      if (onRefactored) {
+        onRefactored({
+          smell_targeted:    selectedSmell,
+          agent_mode:        agentMode,
+          model_type:        modelType,
+          model_name:        modelName,
+          original_code:     code,
+          refactored_code:   response.refactored_code,
+          detection_results: response.detection_results || [],
+        });
+      }
     } catch (err) {
       // Ignore abort errors — user cancelled intentionally
       if (err?.code === 'ERR_CANCELED' || err?.name === 'AbortError' || err?.name === 'CanceledError') {

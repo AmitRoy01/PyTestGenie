@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
 import refactoringService from "../services/refactoringService";
 import SaveVersionModal from "./SaveVersionModal";
+import PipelineReportModal from "./PipelineReportModal";
+import authService from "../services/authService";
 
 function TestRefactorer({ initialData }) {
   const [mode, setMode] = useState("code"); // code or file
@@ -17,6 +19,7 @@ function TestRefactorer({ initialData }) {
   const [availableSmells, setAvailableSmells] = useState([]);
   const [healthStatus, setHealthStatus] = useState(null);
   const [showSaveModal, setShowSaveModal] = useState(false);
+  const [reportModalOpen, setReportModalOpen] = useState(false);
 
   // Pre-populate from loaded version
   useEffect(() => {
@@ -413,6 +416,44 @@ function TestRefactorer({ initialData }) {
         }}
       />
     )}
+
+      {/* Floating report button — visible once code is present */}
+      {code && (
+        <button
+          onClick={() => setReportModalOpen(true)}
+          title="Generate Pipeline Report"
+          style={{
+            position: 'fixed', bottom: 28, right: 28, zIndex: 1000,
+            background: 'linear-gradient(135deg,#1a237e,#283593)',
+            color: '#fff', border: 'none', borderRadius: 50,
+            width: 56, height: 56, fontSize: '1.4rem',
+            cursor: 'pointer', boxShadow: '0 4px 16px rgba(0,0,0,.3)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}
+        >
+          📄
+        </button>
+      )}
+
+      <PipelineReportModal
+        open={reportModalOpen}
+        onClose={() => setReportModalOpen(false)}
+        pipelineData={{
+          username:       authService.getUser()?.username || '',
+          inputMode:      mode,
+          sourceFilename: selectedFile?.name || 'code.py',
+          sourceCode:     code,
+          refactorResult: result ? {
+            smell_targeted:    selectedSmell,
+            agent_mode:        agentMode,
+            model_type:        modelType,
+            model_name:        modelName,
+            original_code:     code,
+            refactored_code:   result.refactored_code,
+            detection_results: result.detection_results || [],
+          } : null,
+        }}
+      />
     </>
   );
 }
