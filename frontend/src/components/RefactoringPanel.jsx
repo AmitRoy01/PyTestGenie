@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import refactoringService from "../services/refactoringService";
+import SaveVersionModal from "./SaveVersionModal";
 
 function RefactoringPanel({ code, detectedSmells }) {
   const [agentMode, setAgentMode] = useState("single");
@@ -11,6 +12,7 @@ function RefactoringPanel({ code, detectedSmells }) {
   const [error, setError] = useState(null);
   const [availableModels, setAvailableModels] = useState({ ollama: [], huggingface: [] });
   const [healthStatus, setHealthStatus] = useState(null);
+  const [showSaveModal, setShowSaveModal] = useState(false);
   const abortControllerRef = useRef(null);
 
   useEffect(() => {
@@ -102,6 +104,7 @@ function RefactoringPanel({ code, detectedSmells }) {
   }
 
   return (
+    <>
     <div className="refactoring-panel">
       <div className="refactoring-header">
         <h3>🔧 AI-Powered Test Code Refactoring</h3>
@@ -226,6 +229,13 @@ function RefactoringPanel({ code, detectedSmells }) {
           <div className="result-header">
             <h3>✅ Refactoring Complete</h3>
             {result.error && <p className="warning">⚠️ {result.error}</p>}
+            <button
+              className="btn btn-primary"
+              style={{ marginTop: 8 }}
+              onClick={() => setShowSaveModal(true)}
+            >
+              💾 Save to Project
+            </button>
           </div>
 
           <div className="code-comparison">
@@ -325,6 +335,23 @@ function RefactoringPanel({ code, detectedSmells }) {
         </div>
       )}
     </div>
+
+    {showSaveModal && (
+      <SaveVersionModal
+        open={showSaveModal}
+        onClose={() => setShowSaveModal(false)}
+        onSaved={() => setShowSaveModal(false)}
+        step="refactored"
+        defaultLabel="After refactoring"
+        data={{
+          test_code: code,
+          refactored_code: result?.refactored_code || '',
+          refactor_model: modelName,
+          refactor_smell: selectedSmell,
+        }}
+      />
+    )}
+    </>
   );
 }
 

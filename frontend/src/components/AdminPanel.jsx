@@ -10,27 +10,28 @@ function AdminPanel() {
 
   useEffect(() => {
     loadUsers();
-  }, [activeTab]);
+  }, []);
 
   const loadUsers = async () => {
     setLoading(true);
-    
-    if (activeTab === 'pending') {
-      const result = await authService.getPendingUsers();
-      if (result.success) {
-        setPendingUsers(result.data);
-      } else {
-        setMessage({ text: result.error, type: 'error' });
-      }
+
+    const [pendingResult, allResult] = await Promise.all([
+      authService.getPendingUsers(),
+      authService.getAllUsers(),
+    ]);
+
+    if (pendingResult.success) {
+      setPendingUsers(pendingResult.data);
     } else {
-      const result = await authService.getAllUsers();
-      if (result.success) {
-        setUsers(result.data);
-      } else {
-        setMessage({ text: result.error, type: 'error' });
-      }
+      setMessage({ text: pendingResult.error, type: 'error' });
     }
-    
+
+    if (allResult.success) {
+      setUsers(allResult.data);
+    } else {
+      setMessage({ text: allResult.error, type: 'error' });
+    }
+
     setLoading(false);
   };
 

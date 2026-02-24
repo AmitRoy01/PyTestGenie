@@ -1,11 +1,23 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import axios from "axios";
 import RefactoringPanel from "./RefactoringPanel";
+import SaveVersionModal from "./SaveVersionModal";
 
 const API_BASE = `${import.meta.env.VITE_API_BASE_URL || 'https://pytestgenie.onrender.com/api'}/test-generator`;
 const SMELL_API_BASE = `${import.meta.env.VITE_API_BASE_URL || 'https://pytestgenie.onrender.com/api'}/smell-detector`;
 
-function TestGenerator() {
+// LLM model catalogue (mirrors backend / SmellDetector)
+const LLM_MODELS = {
+  ollama: [
+    { name: "Llama 3.2", model_id: "llama3.2" },
+  ],
+  huggingface: [
+    { name: "Mistral 7B Instruct v0.2", model_id: "mistralai/Mistral-7B-Instruct-v0.2" },
+    { name: "GPT-OSS 20B", model_id: "openai/gpt-oss-20b:groq" },
+  ],
+};
+
+function TestGenerator({ initialData }) {
   const [code, setCode] = useState("");
   const [testCode, setTestCode] = useState("");
   const [loading, setLoading] = useState(false);
@@ -19,6 +31,27 @@ function TestGenerator() {
   const [showRefactoring, setShowRefactoring] = useState(false);
   const [mountedRefactoring, setMountedRefactoring] = useState(false);
   const [detectedSmells, setDetectedSmells] = useState([]);
+  const [showSaveModal, setShowSaveModal] = useState(false);
+  const [saveStep, setSaveStep] = useState("test_generated");
+
+  // Smell detection method
+  const [smellDetectionMethod, setSmellDetectionMethod] = useState("rule_based");
+  const [smellLlmModelType, setSmellLlmModelType] = useState("ollama");
+  const [smellLlmModelName, setSmellLlmModelName] = useState("llama3.2");
+
+  const handleSmellLlmModelTypeChange = (type) => {
+    setSmellLlmModelType(type);
+    setSmellLlmModelName(LLM_MODELS[type][0].model_id);
+  };
+
+  // Pre-populate from loaded version
+  useEffect(() => {
+    if (!initialData) return;
+    if (initialData.source_code) setCode(initialData.source_code);
+    if (initialData.test_code)   { setTestCode(initialData.test_code); setCanDetectSmells(true); }
+    if (initialData.smell_results) { setSmellResults(initialData.smell_results); setDetectedSmells(initialData.smell_results.smells || []); }
+    if (initialData.test_generator === 'ai') setUseAI(true);
+  }, [initialData]);
   
   // File upload states
   const [inputMode, setInputMode] = useState("paste"); // "paste", "file", "project"
@@ -189,10 +222,13 @@ function TestGenerator() {
     if (!testCode) return;
 
     try {
-      const resp = await axios.post(
-        `${SMELL_API_BASE}/analyze/code`,
-        { code: testCode, filename: "generated_test.py" }
-      );
+      const payload = {
+        code: testCode,
+        filename: "generated_test.py",
+        detection_method: smellDetectionMethod,
+        ...(smellDetectionMethod === 'llm_based' && { model_type: smellLlmModelType, model_name: smellLlmModelName }),
+      };
+      const resp = await axios.post(`${SMELL_API_BASE}/analyze/code`, payload);
       if (resp.data.status === "success") {
         setSmellResults(resp.data);
         setDetectedSmells(resp.data.smells || []);
@@ -499,25 +535,115 @@ function TestGenerator() {
               💾 Download
             </button>
             {canDetectSmells && (
-              <button className="btn btn-accent" onClick={handleDetectSmells}>
-                🔍 Detect Test Smells
-              </button>
+              <div style={{ display: "inline-flex", flexDirection: "column", gap: "8px", marginLeft: "10px", verticalAlign: "top" }}>
+                {/* Smell detection method picker */}
+                <div style={{ display: "flex", gap: "10px", alignItems: "center", flexWrap: "wrap" }}>
+                  <span style={{ fontWeight: "bold", fontSize: "13px" }}>🔍 Detect by:</span>
+                  <label className="radio-label" style={{ fontSize: "13px" }}>
+                    <input
+                      type="radio"
+                      checked={smellDetectionMethod === "rule_based"}
+                      onChange={() => setSmellDetectionMethod("rule_based")}
+                    />
+                    <span>📏 Rule-Based</span>
+                  </label>
+                  <label className="radio-label" style={{ fontSize: "13px" }}>
+                    <input
+                      type="radio"
+                      checked={smellDetectionMethod === "llm_based"}
+                      onChange={() => setSmellDetectionMethod("llm_based")}
+                    />
+                    <span>🧠 LLM-Based</span>
+                  </label>
+                  {smellDetectionMethod === "llm_based" && (
+                    <>
+                      <select
+                        value={smellLlmModelType}
+                        onChange={(e) => handleSmellLlmModelTypeChange(e.target.value)}
+                        style={{ padding: "5px 10px", borderRadius: "6px", border: "1px solid #ccc", fontSize: "13px" }}
+                      >
+                        <option value="ollama">Ollama (Local)</option>
+                        <option value="huggingface">HuggingFace API</option>
+                      </select>
+                      <select
+                        value={smellLlmModelName}
+                        onChange={(e) => setSmellLlmModelName(e.target.value)}
+                        style={{ padding: "5px 10px", borderRadius: "6px", border: "1px solid #ccc", fontSize: "13px" }}
+                      >
+                        {(LLM_MODELS[smellLlmModelType] || []).map((m) => (
+                          <option key={m.model_id} value={m.model_id}>{m.name}</option>
+                        ))}
+                      </select>
+                    </>
+                  )}
+                </div>
+                <button className="btn btn-accent" onClick={handleDetectSmells} style={{ alignSelf: "flex-start" }}>
+                  🔍 Detect Test Smells
+                </button>
+              </div>
             )}
+            <button
+              className="btn btn-primary"
+              onClick={() => { setSaveStep("test_generated"); setShowSaveModal(true); }}
+            >
+              💾 Save to Project
+            </button>
           </div>
           {smellResults && (
             <div className="results-card" style={{ marginTop: "15px" }}>
               <h3>📊 Analysis Results</h3>
               <p><strong>Total Test Smells:</strong> {smellResults.total_smells}</p>
+              <p style={{ fontSize: "12px", color: "#666", marginTop: "2px" }}>
+                <strong>Detection:</strong>{" "}
+                {smellResults.detection_method === "llm_based"
+                  ? `🧠 LLM-Based (${smellResults.model_used || smellLlmModelName})`
+                  : "📏 Rule-Based"}
+              </p>
               {smellResults.smells && smellResults.smells.length > 0 && (
                 <div className="smells-list" style={{ marginBottom: "10px" }}>
                   <h4>Detected Smells:</h4>
                   {smellResults.smells.map((smell, idx) => (
-                    <div key={idx} className="smell-item">
-                      <span className="smell-type">{smell.type}</span>
-                      <span className="smell-method">{smell.method}</span>
-                      <span className="smell-lines">Line {smell.lines}</span>
+                    <div key={idx} className="smell-item" style={{ flexDirection: "column", alignItems: "flex-start", gap: "6px", padding: "10px 12px" }}>
+                      <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "center" }}>
+                        <span className="smell-type">{smell.type}</span>
+                        <span className="smell-method">{smell.method}</span>
+                        {smell.lines && smell.lines.length > 0 && (
+                          <span className="smell-lines">Line {smell.lines}</span>
+                        )}
+                      </div>
+                      {smellResults.detection_method === "llm_based" && smell.explanation && (
+                        <div style={{
+                          marginTop: "4px",
+                          padding: "8px 10px",
+                          background: "#f8f9fa",
+                          borderLeft: "3px solid #e67e22",
+                          borderRadius: "4px",
+                          fontSize: "13px",
+                          color: "#333",
+                          lineHeight: "1.55",
+                          width: "100%",
+                          boxSizing: "border-box",
+                          whiteSpace: "pre-wrap"
+                        }}>
+                          {smell.explanation}
+                        </div>
+                      )}
                     </div>
                   ))}
+                </div>
+              )}
+              {/* Refactor button — always shown when smells detected, regardless of report type */}
+              {smellResults.smells && smellResults.smells.length > 0 && (
+                <div style={{ marginTop: "10px", marginBottom: "10px" }}>
+                  <button
+                    className="btn btn-primary"
+                    onClick={() => {
+                      setMountedRefactoring(true);
+                      setShowRefactoring(prev => !prev);
+                    }}
+                  >
+                    {showRefactoring ? '🔼 Hide Refactoring' : '🔧 Refactor Code'}
+                  </button>
                 </div>
               )}
               {smellResults.report_available && (
@@ -533,34 +659,30 @@ function TestGenerator() {
                   >
                     📄 View AI powered Report
                   </button>
-                      <button 
-                        className="btn" 
-                        style={{ marginLeft: "10px" }} 
-                        onClick={downloadReportFile}
-                      >
-                        ⬇️ Download Report
-                      </button>
-                      <button 
-                        className="btn" 
-                        style={{ marginLeft: "10px" }} 
-                        onClick={downloadAiReportFile}
-                      >
-                        ⬇️ Download AI Report
-                      </button>
-                      {smellResults.smells && smellResults.smells.length > 0 && (
-                        <button 
-                          className="btn btn-primary" 
-                          style={{ marginLeft: "10px" }} 
-                          onClick={() => {
-                            setMountedRefactoring(true);
-                            setShowRefactoring(prev => !prev);
-                          }}
-                        >
-                          {showRefactoring ? '🔼 Hide Refactoring' : '🔧 Refactor Code'}
-                        </button>
-                      )}
+                  <button 
+                    className="btn" 
+                    style={{ marginLeft: "10px" }} 
+                    onClick={downloadReportFile}
+                  >
+                    ⬇️ Download Report
+                  </button>
+                  <button 
+                    className="btn" 
+                    style={{ marginLeft: "10px" }} 
+                    onClick={downloadAiReportFile}
+                  >
+                    ⬇️ Download AI Report
+                  </button>
                 </div>
               )}
+              <div style={{ marginTop: "10px" }}>
+                <button
+                  className="btn btn-primary"
+                  onClick={() => { setSaveStep("smell_detected"); setShowSaveModal(true); }}
+                >
+                  💾 Save to Project
+                </button>
+              </div>
             </div>
           )}
         </div>
@@ -572,6 +694,24 @@ function TestGenerator() {
             <RefactoringPanel code={testCode} detectedSmells={detectedSmells} />
           </div>
         </div>
+      )}
+
+      {showSaveModal && (
+        <SaveVersionModal
+          open={showSaveModal}
+          onClose={() => setShowSaveModal(false)}
+          onSaved={() => setShowSaveModal(false)}
+          step={saveStep}
+          defaultLabel={saveStep === 'test_generated' ? 'After test generation' : 'After smell detection'}
+          data={{
+            source_code:     code,
+            source_filename: uploadedFile || selectedModule || 'code.py',
+            test_code:       testCode,
+            test_generator:  useAI ? 'ai' : 'pynguin',
+            test_algorithm:  useAI ? aiModel : algorithm,
+            smell_results:   smellResults,
+          }}
+        />
       )}
     </div>
   );

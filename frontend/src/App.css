@@ -54,6 +54,9 @@ body {
   display: flex;
   align-items: center;
   gap: 10px;
+  text-decoration: none;
+  font-family: inherit;
+  font-weight: inherit;
 }
 
 .tab-button:hover {
