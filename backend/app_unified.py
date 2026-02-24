@@ -15,6 +15,7 @@ from routes.admin import admin_bp
 from routes.refactoring import refactoring_bp
 from routes.projects import projects_bp
 from routes.pipeline_report import pipeline_report_bp
+from routes.dashboard import dashboard_bp
 
 
 def create_app(config_name='development'):
@@ -64,6 +65,7 @@ def create_app(config_name='development'):
     app.register_blueprint(refactoring_bp, url_prefix='/api/refactoring')
     app.register_blueprint(projects_bp, url_prefix='/api/projects')
     app.register_blueprint(pipeline_report_bp, url_prefix='/api/pipeline-reports')
+    app.register_blueprint(dashboard_bp, url_prefix='/api/dashboard')
     
     # Root endpoint
     @app.route('/')
