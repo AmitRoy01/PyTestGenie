@@ -105,6 +105,16 @@ function RefactoringPanel({ code, detectedSmells, onRefactored }) {
     alert('Copied to clipboard!');
   };
 
+  const downloadCode = (text, defaultName) => {
+    const name = window.prompt('Save as:', defaultName || 'refactored.py');
+    if (!name) return;
+    const blob = new Blob([text], { type: 'text/plain' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = name.endsWith('.py') ? name : name + '.py';
+    link.click();
+  };
+
   if (!code) {
     return (
       <div className="refactoring-panel-empty">
@@ -260,12 +270,10 @@ function RefactoringPanel({ code, detectedSmells, onRefactored }) {
             <div className="code-panel">
               <div className="code-panel-header">
                 <h4>✨ Refactored Code</h4>
-                <button 
-                  onClick={() => copyToClipboard(result.refactored_code)}
-                  className="btn-copy-small"
-                >
-                  📋 Copy
-                </button>
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <button onClick={() => copyToClipboard(result.refactored_code)} className="btn-copy-small">📋 Copy</button>
+                  <button onClick={() => downloadCode(result.refactored_code, 'refactored.py')} className="btn-copy-small">⬇️ Download</button>
+                </div>
               </div>
               <pre><code>{result.refactored_code}</code></pre>
             </div>
@@ -327,6 +335,10 @@ function RefactoringPanel({ code, detectedSmells, onRefactored }) {
                       {item.refactored_code && (
                         <details className="step-details">
                           <summary>🔧 Refactored Code (Iteration {item.iteration})</summary>
+                          <div style={{ display: 'flex', gap: 6, padding: '6px 8px' }}>
+                            <button onClick={() => copyToClipboard(item.refactored_code)} className="btn-copy-small" style={{ background: '#667eea', color: '#fff' }}>📋 Copy</button>
+                            <button onClick={() => downloadCode(item.refactored_code, `refactored_iter${item.iteration}.py`)} className="btn-copy-small" style={{ background: '#667eea', color: '#fff' }}>⬇️ Download</button>
+                          </div>
                           <pre><code>{item.refactored_code}</code></pre>
                         </details>
                       )}
