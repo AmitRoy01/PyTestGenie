@@ -276,11 +276,18 @@ function TestGenerator({ initialData }) {
     }
   };
 
+  const copyToClipboard = (text) => {
+    navigator.clipboard.writeText(text);
+    alert('Copied to clipboard!');
+  };
+
   const handleDownload = () => {
-    const blob = new Blob([testCode], { type: "text/python" });
+    const name = window.prompt('Save as:', 'test_generated.py');
+    if (!name) return;
+    const blob = new Blob([testCode], { type: "text/plain" });
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
-    link.download = "test_generated.py";
+    link.download = name.endsWith('.py') ? name : name + '.py';
     link.click();
   };
 
@@ -537,8 +544,11 @@ function TestGenerator({ initialData }) {
           <pre className="code-output">{testCode}</pre>
           
           <div className="button-group">
+            <button className="btn btn-secondary" onClick={() => copyToClipboard(testCode)}>
+              📋 Copy
+            </button>
             <button className="btn btn-secondary" onClick={handleDownload}>
-              💾 Download
+              ⬇️ Download
             </button>
             {canDetectSmells && (
               <div style={{ display: "inline-flex", flexDirection: "column", gap: "8px", marginLeft: "10px", verticalAlign: "top" }}>
